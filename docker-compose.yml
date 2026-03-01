@@ -1,0 +1,14 @@
+services:
+  duckdb-processor:
+    build: .
+    volumes:
+      - ./data:/data
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ./resources:/app/resources
+    environment:
+      - DUCKDB_DATABASE=/data/budget.db
+    command:
+      - /bin/bash
+      - -c
+      - "/app/scripts/entrypoint.sh && tail -f /dev/null"
