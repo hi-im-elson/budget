@@ -78,7 +78,7 @@ def generate_ddl(table_name: str, source_config: dict) -> str:
         columns_definitions.append(definition)
     
     ddl += f"""
-    CREATE TABLE IF NOT EXISTS {table_name} (
+    CREATE OR REPLACE TABLE {table_name} (
         {",\n".join(columns_definitions)}
     );"""
 

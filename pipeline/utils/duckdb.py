@@ -55,7 +55,7 @@ def execute_multiple(con: duckdb.DuckDBPyConnection, sql_commands: list[str], lo
 def parse_value_from_string_sql(source_col: str, target_col: str, target_type: str,  date_format: str) -> str:
 
     if date_format:
-        return f"CAST(strptime({source_col}, '{date_format}') AS {target_type}) AS {target_col}"
+        return f"CAST(STRPTIME(CAST({source_col} AS VARCHAR), '{date_format}') AS {target_type}) AS {target_col}"
     else:
         return f"CAST({source_col} AS {target_type}) AS {target_col}"
 

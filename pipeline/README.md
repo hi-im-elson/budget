@@ -60,7 +60,7 @@ Example:
 ```yaml
 sources:
   amex:
-    input_path: "data/raw/amex/"
+    input_path: "data/raw/csv/amex/"
     csv_options:
       dateformat: "%d %b %Y"
     columns:

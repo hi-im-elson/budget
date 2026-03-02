@@ -21,7 +21,6 @@ def load_bronze(con: duckdb.DuckDBPyConnection, source_name: str, config: dict):
     """
     csv_path = config.get("input_path") # path to raw csv files
     table_name = config.get("bronze_table") # name of bronze
-    date_format = config.get("csv_options", {}).get("dateformat", "") # format of dates in csv
     
     if not csv_path or not table_name:
         logger.warning(f"Skipping {source_name}: Missing input_path or bronze_table in config")
@@ -42,7 +41,8 @@ def load_bronze(con: duckdb.DuckDBPyConnection, source_name: str, config: dict):
         
         insert_query = f"""
             INSERT INTO {table_name} 
-            SELECT * FROM read_csv('{f}', all_varchar=true, filename=true, sep=',')
+            SELECT * EXCLUDE (filename), REGEXP_EXTRACT(filename, 'data/raw/csv/(.*)', 1) AS filename 
+            FROM read_csv('{f}', all_varchar=false, filename=true, sep=',')
         """
 
         execute(con, insert_query, logger)
