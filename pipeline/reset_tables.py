@@ -2,13 +2,13 @@ import os
 import sys
 import argparse
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
-from src.sql.utils.duckdb import (
+from pipeline.utils.duckdb import (
     connect_to_db, 
     load_config
 )
-from src.utils.logger import create_logger
+from pipeline.utils.logger import create_logger
 
 logger = create_logger("reset_tables.log")
 
@@ -39,7 +39,7 @@ def get_tables_to_drop() -> list[tuple[str, str]]:
 def main():
 
     # load config to get db_path
-    config_path = os.path.join(os.path.dirname(__file__), "../../resources/variables.yml")
+    config_path = os.path.join(os.path.dirname(__file__), "../resources/variables.yml")
     config = load_config(config_path)
 
     # connect to db

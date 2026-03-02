@@ -2,10 +2,10 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-RUN pip install duckdb PyYAML
-
+RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
+RUN pip install duckdb PyYAML fastapi uvicorn pydantic pytz
 COPY data /app/data
-COPY src /app/src
+COPY pipeline /app/pipeline
 COPY scripts /app/scripts
 COPY resources /app/resources
 

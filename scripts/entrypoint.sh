@@ -3,15 +3,20 @@ set -e
 
 export PYTHONPATH=/app
 
-echo "Starting data pipeline..."
+if [ -f "/app/data/budget.db" ]; then
+    echo "Database /app/data/budget.db already exists. Skipping initial pipeline run."
+    echo "Use the Refresh Pipeline feature to reload data."
+else
+    echo "Starting data pipeline..."
 
-echo "Running Table Bootstrap..."
-python3 src/sql/table_bootstrap.py
+    echo "Running Table Bootstrap..."
+    python3 pipeline/table_bootstrap.py
 
-echo "Running Bronze Layer..."
-python3 src/sql/bronze.py
+    echo "Running Bronze Layer..."
+    python3 pipeline/bronze.py
 
-echo "Running Silver Layer..."
-python3 src/sql/silver.py
+    echo "Running Silver Layer..."
+    python3 pipeline/silver.py
 
-echo "Data pipeline completed successfully."
+    echo "Data pipeline completed successfully."
+fi

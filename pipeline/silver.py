@@ -3,9 +3,9 @@ import os
 import sys
 
 # Add project root to sys.path so we can import src
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
-from src.sql.utils.duckdb import (
+from pipeline.utils.duckdb import (
     connect_to_db, 
     load_config, 
     execute, 
@@ -13,7 +13,7 @@ from src.sql.utils.duckdb import (
     generate_primary_key_sql,
     return_current_timestamp
 )
-from src.utils.logger import create_logger
+from pipeline.utils.logger import create_logger
 
 logger = create_logger("silver.log")
 
@@ -84,7 +84,7 @@ def load_silver(con: duckdb.DuckDBPyConnection, source_name: str, config: dict):
 
 def main():
     # Load config
-    config_path = os.path.join(os.path.dirname(__file__), "../../resources/variables.yml")
+    config_path = os.path.join(os.path.dirname(__file__), "../resources/variables.yml")
     config = load_config(config_path)
     
     db_path = config.get("db", {}).get("db_path", "data/budget.db")
