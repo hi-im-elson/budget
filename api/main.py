@@ -72,10 +72,20 @@ def get_last_refresh():
         row = result.fetchone()
         
         timestamp = row[0] if row and row[0] else None
-        return {"last_refresh": timestamp}
+        
+        recent_tx_result = conn.execute("SELECT MAX(date) FROM silver.amex")
+        tx_row = recent_tx_result.fetchone()
+        recent_transactions = []
+        if tx_row and tx_row[0]:
+            recent_transactions.append({
+                "source": "silver.amex",
+                "date": tx_row[0].isoformat() if hasattr(tx_row[0], 'isoformat') else str(tx_row[0])
+            })
+            
+        return {"last_refresh": timestamp, "recent_transactions": recent_transactions}
     except Exception as e:
         # Might not exist yet
-        return {"last_refresh": None}
+        return {"last_refresh": None, "recent_transactions": []}
     finally:
         if 'conn' in locals():
             conn.close()

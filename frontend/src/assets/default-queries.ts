@@ -17,11 +17,14 @@ ORDER BY date DESC;
         title: "Monthly spend summary",
         query: `
 SELECT 
-  date_trunc('month', date) AS month,
+  STRFTIME(DATE(year(date)||'-'||month(date)||'-'||01), '%Y %B') AS transaction_month,
+  COUNT(id) AS transaction_count,
   SUM(amount) AS total_spend
 FROM silver.amex
-GROUP BY month
-ORDER BY month DESC;
+WHERE 
+    LOWER(description) NOT LIKE 'payment received%'
+GROUP BY DATE(year(date)||'-'||month(date)||'-'||01)
+ORDER BY DATE(year(date)||'-'||month(date)||'-'||01) DESC;
 `
     },
     {

@@ -50,6 +50,13 @@ function App() {
     localStorage.setItem('budgetSavedQueries', JSON.stringify(newSaved));
   };
 
+  const handleRestoreDefaults = () => {
+    if (window.confirm("Are you sure you want to restore default queries? This will overwrite your current saved queries.")) {
+      setSavedQueries(DEFAULT_QUERIES);
+      localStorage.setItem('budgetSavedQueries', JSON.stringify(DEFAULT_QUERIES));
+    }
+  };
+
   const handleDeleteQuery = (id: string) => {
     const newSaved = savedQueries.filter(q => q.id !== id);
     setSavedQueries(newSaved);
@@ -101,6 +108,7 @@ function App() {
                 handleRunQuery(q);
               }}
               onDelete={handleDeleteQuery}
+              onRestoreDefaults={handleRestoreDefaults}
             />
           </section>
 

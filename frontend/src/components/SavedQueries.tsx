@@ -8,9 +8,10 @@ interface SavedQueriesProps {
     onLoad: (query: string) => void;
     onRun: (query: string) => void;
     onDelete: (id: string) => void;
+    onRestoreDefaults: () => void;
 }
 
-export function SavedQueries({ queries, onLoad, onRun, onDelete }: SavedQueriesProps) {
+export function SavedQueries({ queries, onLoad, onRun, onDelete, onRestoreDefaults }: SavedQueriesProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
@@ -76,6 +77,14 @@ export function SavedQueries({ queries, onLoad, onRun, onDelete }: SavedQueriesP
                                     </div>
                                 ))
                             )}
+                            <div className="pt-2 mt-2 border-t border-slate-700/50 flex justify-end">
+                                <button
+                                    onClick={onRestoreDefaults}
+                                    className="text-xs text-slate-400 hover:text-slate-200 transition-colors focus:outline-none"
+                                >
+                                    Restore Defaults
+                                </button>
+                            </div>
                         </div>
                     </motion.div>
                 )}

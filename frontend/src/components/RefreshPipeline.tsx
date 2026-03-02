@@ -14,6 +14,7 @@ export function RefreshPipeline({ onRefreshComplete }: RefreshPipelineProps) {
     const [isConfirming, setIsConfirming] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastRefresh, setLastRefresh] = useState<string | null>(null);
+    const [recentTransactions, setRecentTransactions] = useState<{ source: string, date: string }[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     const fetchLastRefresh = async () => {
@@ -21,6 +22,9 @@ export function RefreshPipeline({ onRefreshComplete }: RefreshPipelineProps) {
             const { data } = await axios.get(`${API_URL}/last-refresh`);
             if (data.last_refresh) {
                 setLastRefresh(data.last_refresh);
+            }
+            if (data.recent_transactions) {
+                setRecentTransactions(data.recent_transactions);
             }
         } catch (e) {
             console.error("Failed to fetch last refresh", e);
@@ -54,14 +58,27 @@ export function RefreshPipeline({ onRefreshComplete }: RefreshPipelineProps) {
 
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between text-xs text-slate-400 px-1 py-0.5">
-                <div className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Last Refresh:</span>
+            <div className="flex flex-col gap-2 px-1 py-0.5">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                    <div className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Last Refresh:</span>
+                    </div>
+                    <span className="font-medium text-slate-300">
+                        {lastRefresh ? formatDistanceToNow(new Date(lastRefresh), { addSuffix: true }) : 'Never'}
+                    </span>
                 </div>
-                <span className="font-medium text-slate-300">
-                    {lastRefresh ? formatDistanceToNow(new Date(lastRefresh), { addSuffix: true }) : 'Never'}
-                </span>
+                {recentTransactions.length > 0 && (
+                    <div className="flex flex-col gap-1 mt-1 border-t border-slate-700/50 pt-2">
+                        <span className="text-xs text-slate-400 mb-1 font-medium">Most Recent Transaction:</span>
+                        {recentTransactions.map((tx, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-xs pl-1">
+                                <span className="text-slate-500">{tx.source}</span>
+                                <span className="font-medium text-slate-300">{tx.date}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <AnimatePresence mode="wait">
