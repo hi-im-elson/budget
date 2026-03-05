@@ -2,6 +2,42 @@ db:
   db_path: "data/budget.db"
 
 sources:
+  wealthsimple-cash:
+      input_path: "data/raw/csv/wealthsimple-cash/"
+      csv_options:
+        dateformat: "%Y-%m-%d"
+      bronze_table: "bronze.wealthsimple_cash"
+      silver_table: "silver.wealthsimple_cash"
+      primary_key: []
+      columns:
+        - name: "id"
+          type: "UBIGINT"
+          constraints: "NOT NULL PRIMARY KEY"
+        - name: "date"
+          type: "DATE"
+          source_column: "date"
+        - name: "description"
+          type: "VARCHAR(255)"
+          source_column: "description"
+        - name: "amount"
+          type: "DECIMAL(10, 2)"
+          source_column: "amount"
+        - name: "balance"
+          type: "DECIMAL(10, 2)"
+          source_column: "balance"
+        - name: "currency"
+          type: "VARCHAR(3)"
+          source_column: "currency"
+        - name: "created_at"
+          type: "TIMESTAMP"
+          default: "CURRENT_TIMESTAMP"
+        - name: "updated_at"
+          type: "TIMESTAMP"
+          default: "CURRENT_TIMESTAMP"
+          on_update: "CURRENT_TIMESTAMP"
+        - name: "file_name"
+          type: "VARCHAR(255)"
+          source_column: "filename"
   rbc-mastercard:
     input_path: "data/raw/csv/rbc-mastercard/"
     csv_options:

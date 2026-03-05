@@ -29,7 +29,7 @@ def load_bronze(con: duckdb.DuckDBPyConnection, source_name: str, config: dict):
     logger.info(f"Loading bronze layer for {source_name} from {csv_path}...")
     
     # Check if files exist
-    files = con.execute(f"SELECT * FROM glob('{csv_path}/*.csv')").fetchall()
+    files = con.execute(f"SELECT * FROM glob('{csv_path}/**/*.csv')").fetchall()
     if not files:
         logger.warning(f"No files found matching {csv_path}. Skipping bronze load.")
         return
