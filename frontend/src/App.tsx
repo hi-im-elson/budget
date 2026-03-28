@@ -12,7 +12,7 @@ const API_URL = 'http://localhost:8000/api/query';
 import { DEFAULT_QUERIES } from './assets/default-queries';
 
 function App() {
-  const [query, setQuery] = useState<string>('-- Write your SQL query here\nSELECT * FROM silver.amex LIMIT 10;');
+  const [query, setQuery] = useState<string>('-- Write your SQL query here\nSELECT * FROM silver.amex_cobalt LIMIT 10;');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);

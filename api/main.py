@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import duckdb
 import os
 import subprocess
+import yaml
 
 app = FastAPI()
 
@@ -45,7 +46,7 @@ def execute_query(request: QueryRequest):
 def refresh_pipeline():
     try:
         scripts = [
-            "pipeline/reset_tables.py silver.amex",
+            "pipeline/reset_tables.py silver.amex_cobalt",
             "pipeline/table_bootstrap.py",
             "pipeline/bronze.py",
             "pipeline/silver.py"
@@ -66,26 +67,42 @@ def refresh_pipeline():
 @app.get("/api/last-refresh")
 def get_last_refresh():
     try:
+        # Load display_name mapping from config
+        config_path = os.path.join(os.path.dirname(__file__), "../resources/variables.yml")
+        with open(config_path, "r") as f:
+            config = yaml.safe_load(f)
+        sources_config = config.get("sources", {})
+        display_names = {
+            key: src.get("display_name", key)
+            for key, src in sources_config.items()
+        }
+
         conn = duckdb.connect(database=DB_PATH, read_only=True)
-        # Assuming silver.amex is the main target table as specified in variables.yml
-        result = conn.execute("SELECT MAX(updated_at) FROM silver.amex")
-        row = result.fetchone()
-        
-        timestamp = row[0] if row and row[0] else None
-        
-        recent_tx_result = conn.execute("SELECT MAX(date) FROM silver.amex")
-        tx_row = recent_tx_result.fetchone()
+        result = conn.execute("""
+            SELECT "source", "last_transaction_date", "last_updated"
+            FROM state.last_updated
+            ORDER BY "last_updated" DESC
+        """)
+        rows = result.fetchall()
+
         recent_transactions = []
-        if tx_row and tx_row[0]:
+        last_refresh = None
+
+        for row in rows:
+            source_key, last_tx_date, last_updated = row
+            if last_refresh is None or (last_updated and last_updated > last_refresh):
+                last_refresh = last_updated
             recent_transactions.append({
-                "source": "silver.amex",
-                "date": tx_row[0].isoformat() if hasattr(tx_row[0], 'isoformat') else str(tx_row[0])
+                "source": display_names.get(source_key, source_key),
+                "date": last_tx_date.isoformat() if hasattr(last_tx_date, 'isoformat') else str(last_tx_date),
+                "last_updated": last_updated.isoformat() if hasattr(last_updated, 'isoformat') else str(last_updated),
             })
-            
-        return {"last_refresh": timestamp, "recent_transactions": recent_transactions}
+
+        return {"last_refresh": last_refresh, "recent_transactions": recent_transactions}
     except Exception as e:
         # Might not exist yet
         return {"last_refresh": None, "recent_transactions": []}
     finally:
         if 'conn' in locals():
             conn.close()
+            

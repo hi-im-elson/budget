@@ -14,7 +14,7 @@ export function RefreshPipeline({ onRefreshComplete }: RefreshPipelineProps) {
     const [isConfirming, setIsConfirming] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastRefresh, setLastRefresh] = useState<string | null>(null);
-    const [recentTransactions, setRecentTransactions] = useState<{ source: string, date: string }[]>([]);
+    const [recentTransactions, setRecentTransactions] = useState<{ source: string, date: string, last_updated: string }[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     const fetchLastRefresh = async () => {
@@ -73,7 +73,7 @@ export function RefreshPipeline({ onRefreshComplete }: RefreshPipelineProps) {
                         <span className="text-xs text-slate-400 mb-1 font-medium">Most Recent Transaction:</span>
                         {recentTransactions.map((tx, idx) => (
                             <div key={idx} className="flex items-center justify-between text-xs pl-1">
-                                <span className="text-slate-500">{tx.source}</span>
+                                <span className="text-slate-400 font-medium">{tx.source}</span>
                                 <span className="font-medium text-slate-300">{tx.date}</span>
                             </div>
                         ))}

@@ -6,7 +6,7 @@ export const DEFAULT_QUERIES: SavedQuery[] = [
         title: "Last month's purchases",
         query: `
 SELECT *
-FROM silver.amex
+FROM silver.amex_cobalt
 WHERE date >= date_trunc('month', current_date - INTERVAL 1 MONTH)
   AND date < date_trunc('month', current_date)
 ORDER BY date DESC;
@@ -20,7 +20,7 @@ SELECT
   STRFTIME(DATE(year(date)||'-'||month(date)||'-'||01), '%Y %B') AS transaction_month,
   COUNT(id) AS transaction_count,
   SUM(amount) AS total_spend
-FROM silver.amex
+FROM silver.amex_cobalt
 WHERE 
     LOWER(description) NOT LIKE 'payment received%'
 GROUP BY DATE(year(date)||'-'||month(date)||'-'||01)
@@ -32,7 +32,7 @@ ORDER BY DATE(year(date)||'-'||month(date)||'-'||01) DESC;
         title: "Search by merchant",
         query: `
 SELECT *
-FROM silver.amex
+FROM silver.amex_cobalt
 WHERE lower(merchant) LIKE '%coffee%'
 ORDER BY date DESC;
 `
