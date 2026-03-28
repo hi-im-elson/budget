@@ -1,10 +1,19 @@
+CREATE TABLE IF NOT EXISTS gold.dim_merchant (
+    "id" VARCHAR(255) NOT NULL PRIMARY KEY,
+    "source" VARCHAR(255) NOT NULL,
+    "merchant" VARCHAR(255),
+    "is_subscription" BOOLEAN NOT NULL DEFAULT FALSE,
+    "category_id" INTEGER,
+    "parent_id" VARCHAR(255)
+);
+
 INSERT OR IGNORE INTO gold.dim_merchant (id, source, merchant)
 SELECT DISTINCT
-    SHA256('amex-cobalt' || TRIM(REGEX_REPLACE(merchant, '\s+', ' ', 'g'))) AS id,
+    SHA256('amex-cobalt' || TRIM(REGEXP_REPLACE(merchant, '\s+', ' ', 'g'))) AS id,
     'amex-cobalt' AS source,
-    TRIM(REGEX_REPLACE(merchant, '\s+', ' ', 'g')) AS merchant
+    TRIM(REGEXP_REPLACE(merchant, '\s+', ' ', 'g')) AS merchant
 FROM silver.amex_cobalt
-WHERE TRIM(REGEX_REPLACE(merchant, '\s+', ' ', 'g')) NOT IN (
+WHERE TRIM(REGEXP_REPLACE(merchant, '\s+', ' ', 'g')) NOT IN (
     'MEMBERSHIP FEE INSTALLMENT',
     'PAYMENT RECEIVED - THANK YOU',
     'Use Points for Purchases'
@@ -12,19 +21,19 @@ WHERE TRIM(REGEX_REPLACE(merchant, '\s+', ' ', 'g')) NOT IN (
 
 INSERT OR IGNORE INTO gold.dim_merchant (id, source, merchant)
 SELECT DISTINCT
-    SHA256('rbc-mastercard' || TRIM(REGEX_REPLACE(description, '\s+', ' ', 'g'))) AS id,
+    SHA256('rbc-mastercard' || TRIM(REGEXP_REPLACE(description, '\s+', ' ', 'g'))) AS id,
     'rbc-mastercard' AS source,
-    TRIM(REGEX_REPLACE(description, '\s+', ' ', 'g')) AS merchant
+    TRIM(REGEXP_REPLACE(description, '\s+', ' ', 'g')) AS merchant
 FROM silver.rbc_mastercard
-WHERE TRIM(REGEX_REPLACE(description, '\s+', ' ', 'g')) NOT IN (
+WHERE TRIM(REGEXP_REPLACE(description, '\s+', ' ', 'g')) NOT IN (
     'PAYMENT - THANK YOU / PAI EMENT - MERCI'
 );
 
 INSERT OR IGNORE INTO gold.dim_merchant (id, source, merchant)
 SELECT DISTINCT
-    SHA256('wealthsimple-cash' || TRIM(REGEX_REPLACE(description, '\s+', ' ', 'g'))) AS id,
+    SHA256('wealthsimple-cash' || TRIM(REGEXP_REPLACE(description, '\s+', ' ', 'g'))) AS id,
     'wealthsimple-cash' AS source,
-    TRIM(REGEX_REPLACE(description, '\s+', ' ', 'g')) AS merchant
+    TRIM(REGEXP_REPLACE(description, '\s+', ' ', 'g')) AS merchant
 FROM silver.wealthsimple_cash;
 
 UPDATE gold.dim_merchant dm

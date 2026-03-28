@@ -1,3 +1,9 @@
+CREATE TABLE IF NOT EXISTS gold.dim_source (
+    "source" VARCHAR(255) NOT NULL PRIMARY KEY,
+    "last_transaction_date" DATE NOT NULL,
+    "last_updated" TIMESTAMP NOT NULL
+);
+
 INSERT OR REPLACE INTO gold.dim_source ("source", "last_transaction_date", "last_updated")
 SELECT
     'amex-cobalt' AS "source",
