@@ -53,7 +53,7 @@ def load_bronze(con: duckdb.DuckDBPyConnection, source_name: str, config: dict):
 def main():
     # Load config
     # Using relative path for robustness when run from project root
-    config_path = os.path.join(os.path.dirname(__file__), "../resources/variables.yml")
+    config_path = os.path.join(os.path.dirname(__file__), "../resources/sources.yml")
     config = load_config(config_path)
     
     db_path = config.get("db", {}).get("db_path", "data/budget.db")

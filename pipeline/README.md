@@ -59,8 +59,8 @@ This is the brain of the pipeline. You define sources, table names, and schema d
 Example:
 ```yaml
 sources:
-  amex:
-    input_path: "data/raw/csv/amex/"
+  amex-cobalt:
+    input_path: "data/raw/csv/amex-cobalt/"
     csv_options:
       dateformat: "%d %b %Y"
     columns:
@@ -104,7 +104,7 @@ Once inside the SQL shell:
 SHOW TABLES;
 
 -- Query Silver data
-SELECT * FROM silver.amex LIMIT 5;
+SELECT * FROM silver.amex_cobalt LIMIT 5;
 ```
 
 ## 🛠 Extending

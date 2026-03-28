@@ -39,7 +39,7 @@ def get_tables_to_drop() -> list[tuple[str, str]]:
 def main():
 
     # load config to get db_path
-    config_path = os.path.join(os.path.dirname(__file__), "../resources/variables.yml")
+    config_path = os.path.join(os.path.dirname(__file__), "../resources/sources.yml")
     config = load_config(config_path)
 
     # connect to db

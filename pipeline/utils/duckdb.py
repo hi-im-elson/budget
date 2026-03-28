@@ -1,6 +1,7 @@
 import duckdb
 import yaml
 import logging
+import os
 
 def load_config(config_path: str) -> dict:
     

@@ -68,7 +68,7 @@ def refresh_pipeline():
 def get_last_refresh():
     try:
         # Load display_name mapping from config
-        config_path = os.path.join(os.path.dirname(__file__), "../resources/variables.yml")
+        config_path = os.path.join(os.path.dirname(__file__), "../resources/sources.yml")
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
         sources_config = config.get("sources", {})

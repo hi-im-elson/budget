@@ -1,0 +1,60 @@
+mappings:
+  categories:
+    table: "mappings.categories"
+    csv_file: "categories.csv"
+    columns:
+      - name: "id"
+        type: "INTEGER"
+        constraints: "NOT NULL PRIMARY KEY"
+        auto_increment: true
+      - name: "category"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL"
+      - name: "subcategory"
+        type: "VARCHAR(255)"
+    insert_columns:
+      - name: "category"
+        source: "category"
+      - name: "subcategory"
+        source: "subcategory"
+        nullable: true
+
+  merchant_to_category:
+    table: "mappings.merchant_to_category"
+    csv_file: "merchant_to_category.csv"
+    columns:
+      - name: "id"
+        type: "INTEGER"
+        constraints: "NOT NULL PRIMARY KEY"
+        auto_increment: true
+      - name: "merchant_name"
+        type: "VARCHAR(255)"
+      - name: "category_id"
+        type: "INTEGER"
+    insert_columns:
+      - name: "merchant_name"
+        source: "merchant_name"
+    foreign_key_lookup:
+      insert_column: "category_id"
+      source_column: "category_name"
+      lookup_table: "mappings.categories"
+      lookup_column: "category"
+      return_column: "id"
+
+  merchant_to_parent_merchant:
+    table: "mappings.merchant_to_parent_merchant"
+    csv_file: "merchant_to_parent_merchant.csv"
+    columns:
+      - name: "id"
+        type: "INTEGER"
+        constraints: "NOT NULL PRIMARY KEY"
+        auto_increment: true
+      - name: "merchant_name"
+        type: "VARCHAR(255)"
+      - name: "parent_merchant_name"
+        type: "VARCHAR(255)"
+    insert_columns:
+      - name: "merchant_name"
+        source: "merchant_name"
+      - name: "parent_merchant_name"
+        source: "parent_merchant_name"

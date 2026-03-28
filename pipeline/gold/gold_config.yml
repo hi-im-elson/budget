@@ -1,0 +1,52 @@
+tables:
+  dim_category:
+    target_table: gold.dim_category
+    columns:
+      - name: "id"
+        type: "INTEGER"
+        constraints: "NOT NULL PRIMARY KEY"
+      - name: "category"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL"
+      - name: "subcategory"
+        type: "VARCHAR(255)"
+
+  dim_merchant:
+    target_table: gold.dim_merchant
+    payment_descriptions:
+      amex_cobalt:
+        - "MEMBERSHIP FEE INSTALLMENT"
+        - "PAYMENT RECEIVED - THANK YOU"
+        - "Use Points for Purchases"
+      rbc_mastercard:
+        - "PAYMENT - THANK YOU / PAI EMENT - MERCI"
+      wealthsimple_cash: []
+    columns:
+      - name: "id"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL PRIMARY KEY"
+      - name: "source"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL"
+      - name: "merchant"
+        type: "VARCHAR(255)"
+      - name: "is_subscription"
+        type: "BOOLEAN"
+        constraints: "NOT NULL DEFAULT FALSE"
+      - name: "category_id"
+        type: "INTEGER"
+      - name: "parent_id"
+        type: "VARCHAR(255)"
+
+  dim_source:
+    target_table: gold.dim_source
+    columns:
+      - name: "source"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL PRIMARY KEY"
+      - name: "last_transaction_date"
+        type: "DATE"
+        constraints: "NOT NULL"
+      - name: "last_updated"
+        type: "TIMESTAMP"
+        constraints: "NOT NULL"
