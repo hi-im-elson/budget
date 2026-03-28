@@ -18,5 +18,8 @@ else
     echo "Running Silver Layer..."
     python3 pipeline/silver.py
 
+    echo "Running Gold Layer..."
+    python3 pipeline/gold.py
+
     echo "Data pipeline completed successfully."
 fi
