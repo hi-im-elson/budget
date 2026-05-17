@@ -80,7 +80,7 @@ def get_last_refresh():
         conn = duckdb.connect(database=DB_PATH, read_only=True)
         result = conn.execute("""
             SELECT "source", "last_transaction_date", "last_updated"
-            FROM state.last_updated
+            FROM gold.dim_source
             ORDER BY "last_updated" DESC
         """)
         rows = result.fetchall()
