@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS gold.dim_category (
     "subcategory" VARCHAR(255)
 );
 
+DELETE FROM gold.dim_category;
+
 INSERT OR IGNORE INTO gold.dim_category (id, category, subcategory)
 SELECT id, category, subcategory
 FROM mappings.categories;

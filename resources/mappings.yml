@@ -58,3 +58,36 @@ mappings:
         source: "merchant_name"
       - name: "parent_merchant_name"
         source: "parent_merchant_name"
+
+  etransfer_recipients:
+    table: "mappings.etransfer_recipients"
+    csv_file: "etransfer_recipients.csv"
+    columns:
+      - name: "id"
+        type: "INTEGER"
+        constraints: "NOT NULL PRIMARY KEY"
+        auto_increment: true
+      - name: "date"
+        type: "DATE"
+        constraints: "NOT NULL"
+      - name: "amount"
+        type: "DECIMAL(10,2)"
+        constraints: "NOT NULL"
+      - name: "recipient_name"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL"
+      - name: "category_id"
+        type: "INTEGER"
+    insert_columns:
+      - name: "date"
+        source: "date"
+      - name: "amount"
+        source: "amount"
+      - name: "recipient_name"
+        source: "recipient_name"
+    foreign_key_lookup:
+      insert_column: "category_id"
+      source_column: "category_name"
+      lookup_table: "mappings.categories"
+      lookup_column: "category"
+      return_column: "id"

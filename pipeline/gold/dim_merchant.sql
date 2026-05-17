@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS gold.dim_merchant (
     "parent_id" VARCHAR(255)
 );
 
+DELETE FROM gold.dim_merchant;
+
 INSERT OR IGNORE INTO gold.dim_merchant (id, source, merchant)
 SELECT DISTINCT
     SHA256('amex-cobalt' || TRIM(REGEXP_REPLACE(merchant, '\s+', ' ', 'g'))) AS id,
@@ -34,7 +36,8 @@ SELECT DISTINCT
     SHA256('wealthsimple-cash' || TRIM(REGEXP_REPLACE(description, '\s+', ' ', 'g'))) AS id,
     'wealthsimple-cash' AS source,
     TRIM(REGEXP_REPLACE(description, '\s+', ' ', 'g')) AS merchant
-FROM silver.wealthsimple_cash;
+FROM silver.wealthsimple_cash
+WHERE transaction = 'SPEND';
 
 UPDATE gold.dim_merchant dm
 SET category_id = mc.category_id

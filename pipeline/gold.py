@@ -14,6 +14,8 @@ SQL_FILES = [
     "dim_source.sql",
     "dim_category.sql",
     "dim_merchant.sql",
+    "dim_transaction_type.sql",
+    "fact_transactions.sql",
 ]
 
 
