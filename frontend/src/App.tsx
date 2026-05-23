@@ -17,6 +17,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [savedQueries, setSavedQueries] = useState<SavedQuery[]>(() => {
     const saved = localStorage.getItem('budgetSavedQueries');
     if (saved) {
@@ -81,10 +82,14 @@ function App() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-900 text-slate-200">
-      <Sidebar activeView={activeView} onNavigate={setActiveView} />
+      <Sidebar 
+        activeView={activeView} 
+        onNavigate={setActiveView} 
+        onRefreshComplete={() => setRefreshTrigger(prev => prev + 1)} 
+      />
 
       {activeView === 'dashboard' ? (
-        <Dashboard />
+        <Dashboard key={refreshTrigger} />
       ) : (
         <main className="flex-1 flex flex-col h-full overflow-y-auto w-full">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-900 to-slate-900 -z-10 pointer-events-none" />

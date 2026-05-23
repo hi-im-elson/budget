@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { RefreshCcw, AlertCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { KpiCard } from '../components/dashboard/KpiCard';
 import { SpendChart } from '../components/dashboard/SpendChart';
 import { CategoryBreakdown } from '../components/dashboard/CategoryBreakdown';
@@ -16,7 +15,15 @@ async function runQuery<T>(query: string): Promise<T[]> {
 
 // ─── SQL queries ──────────────────────────────────────────────────────────────
 
-const MONTHLY_OVERVIEW_SQL = `
+const MONTHS_LIST_SQL = `
+SELECT DISTINCT
+    strftime(date_trunc('month', transaction_date), '%Y-%m')       AS month_val,
+    strftime(date_trunc('month', transaction_date), '%b %Y')       AS month_label
+FROM gold.fact_transactions
+ORDER BY 1 DESC;
+`;
+
+const MONTHLY_OVERVIEW_SQL = (selectedMonth: string) => `
 SELECT
     strftime(date_trunc('month', transaction_date), '%Y-%m')       AS month,
     strftime(date_trunc('month', transaction_date), '%b %Y')       AS month_label,
@@ -25,54 +32,55 @@ SELECT
     SUM(CASE WHEN direction = 'outbound' AND type_code NOT IN ('cc_payment','account_transfer','pre_auth_debit')
              THEN amount ELSE 0 END)                               AS spending
 FROM gold.fact_transactions
-WHERE transaction_date >= date_trunc('month', current_date) - INTERVAL 6 MONTH
+WHERE transaction_date >= date_trunc('month', CAST('${selectedMonth}-01' AS DATE)) - INTERVAL 6 MONTH
+  AND transaction_date <  date_trunc('month', CAST('${selectedMonth}-01' AS DATE)) + INTERVAL 1 MONTH
   AND direction != 'transfer'
 GROUP BY 1, 2
 ORDER BY 1 ASC;
 `;
 
-const CURRENT_MONTH_INCOME_SQL = `
+const CURRENT_MONTH_INCOME_SQL = (selectedMonth: string) => `
 SELECT
     COALESCE(SUM(amount), 0) AS income
 FROM gold.fact_transactions
 WHERE direction = 'inbound'
   AND type_code NOT IN ('cashback', 'refund')
-  AND transaction_date >= date_trunc('month', current_date)
-  AND transaction_date <  date_trunc('month', current_date) + INTERVAL 1 MONTH;
+  AND transaction_date >= date_trunc('month', CAST('${selectedMonth}-01' AS DATE))
+  AND transaction_date <  date_trunc('month', CAST('${selectedMonth}-01' AS DATE)) + INTERVAL 1 MONTH;
 `;
 
-const PRIOR_MONTH_INCOME_SQL = `
+const PRIOR_MONTH_INCOME_SQL = (selectedMonth: string) => `
 SELECT
     COALESCE(SUM(amount), 0) AS income
 FROM gold.fact_transactions
 WHERE direction = 'inbound'
   AND type_code NOT IN ('cashback', 'refund')
-  AND transaction_date >= date_trunc('month', current_date) - INTERVAL 1 MONTH
-  AND transaction_date <  date_trunc('month', current_date);
+  AND transaction_date >= date_trunc('month', CAST('${selectedMonth}-01' AS DATE)) - INTERVAL 1 MONTH
+  AND transaction_date <  date_trunc('month', CAST('${selectedMonth}-01' AS DATE));
 `;
 
-const CURRENT_MONTH_SPEND_SQL = `
+const CURRENT_MONTH_SPEND_SQL = (selectedMonth: string) => `
 SELECT
     COALESCE(SUM(amount), 0) AS spending
 FROM gold.fact_transactions
 WHERE direction = 'outbound'
   AND type_code NOT IN ('cc_payment', 'account_transfer', 'pre_auth_debit')
-  AND transaction_date >= date_trunc('month', current_date)
-  AND transaction_date <  date_trunc('month', current_date) + INTERVAL 1 MONTH;
+  AND transaction_date >= date_trunc('month', CAST('${selectedMonth}-01' AS DATE))
+  AND transaction_date <  date_trunc('month', CAST('${selectedMonth}-01' AS DATE)) + INTERVAL 1 MONTH;
 `;
 
-const PRIOR_MONTH_SPEND_SQL = `
+const PRIOR_MONTH_SPEND_SQL = (selectedMonth: string) => `
 SELECT
     COALESCE(SUM(amount), 0) AS spending
 FROM gold.fact_transactions
 WHERE direction = 'outbound'
   AND type_code NOT IN ('cc_payment', 'account_transfer', 'pre_auth_debit')
-  AND transaction_date >= date_trunc('month', current_date) - INTERVAL 1 MONTH
-  AND transaction_date <  date_trunc('month', current_date);
+  AND transaction_date >= date_trunc('month', CAST('${selectedMonth}-01' AS DATE)) - INTERVAL 1 MONTH
+  AND transaction_date <  date_trunc('month', CAST('${selectedMonth}-01' AS DATE));
 `;
 
 // Recurring: subscriptions + merchants flagged is_subscription, last 3 months
-const RECURRING_SPEND_SQL = `
+const RECURRING_SPEND_SQL = (selectedMonth: string) => `
 SELECT
     COALESCE(dc.category, 'Uncategorised') AS category,
     NULL                                   AS subcategory,
@@ -84,15 +92,15 @@ LEFT JOIN gold.dim_category  dc ON dc.id = ft.category_id
 WHERE ft.direction  = 'outbound'
   AND ft.type_code NOT IN ('cc_payment', 'account_transfer', 'pre_auth_debit')
   AND (dm.is_subscription = TRUE OR ft.type_code IN ('bill_payment'))
-  AND ft.transaction_date >= date_trunc('month', current_date) - INTERVAL 3 MONTH
-  AND ft.transaction_date <  date_trunc('month', current_date)
+  AND ft.transaction_date >= date_trunc('month', CAST('${selectedMonth}-01' AS DATE)) - INTERVAL 3 MONTH
+  AND ft.transaction_date <  date_trunc('month', CAST('${selectedMonth}-01' AS DATE))
 GROUP BY 1, 2
 ORDER BY 3 DESC
 LIMIT 15;
 `;
 
 // Discretionary: non-recurring outbound, categorised, last full month
-const DISCRETIONARY_SPEND_SQL = `
+const DISCRETIONARY_SPEND_SQL = (selectedMonth: string) => `
 SELECT
     COALESCE(dc.category,    'Uncategorised') AS category,
     dc.subcategory                            AS subcategory,
@@ -104,8 +112,8 @@ LEFT JOIN gold.dim_category  dc ON dc.id  = ft.category_id
 WHERE ft.direction  = 'outbound'
   AND ft.type_code NOT IN ('cc_payment', 'account_transfer', 'pre_auth_debit', 'bill_payment')
   AND COALESCE(dm.is_subscription, FALSE) = FALSE
-  AND ft.transaction_date >= date_trunc('month', current_date) - INTERVAL 1 MONTH
-  AND ft.transaction_date <  date_trunc('month', current_date)
+  AND ft.transaction_date >= date_trunc('month', CAST('${selectedMonth}-01' AS DATE)) - INTERVAL 1 MONTH
+  AND ft.transaction_date <  date_trunc('month', CAST('${selectedMonth}-01' AS DATE))
 GROUP BY 1, 2
 ORDER BY 3 DESC
 LIMIT 15;
@@ -137,8 +145,33 @@ export function Dashboard() {
     const [state, setState] = useState<DashboardState>(EMPTY_STATE);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [monthsList, setMonthsList] = useState<{ month_val: string; month_label: string }[]>([]);
+    const [selectedMonth, setSelectedMonth] = useState<string>('');
+
+    // Fetch available months list on component mount
+    useEffect(() => {
+        async function fetchMonths() {
+            try {
+                const months = await runQuery<{ month_val: string; month_label: string }>(MONTHS_LIST_SQL);
+                setMonthsList(months);
+                if (months.length > 0) {
+                    const currentMonthString = new Date().toISOString().substring(0, 7); // "YYYY-MM"
+                    const hasCurrentMonth = months.some(m => m.month_val === currentMonthString);
+                    setSelectedMonth(hasCurrentMonth ? currentMonthString : months[0].month_val);
+                } else {
+                    setLoading(false);
+                }
+            } catch (e: any) {
+                console.error("Failed to fetch months list:", e);
+                setError(e.message || "Failed to load available months");
+                setLoading(false);
+            }
+        }
+        fetchMonths();
+    }, []);
 
     const fetchAll = useCallback(async () => {
+        if (!selectedMonth) return;
         setLoading(true);
         setError(null);
         try {
@@ -151,13 +184,13 @@ export function Dashboard() {
                 recurringRaw,
                 discretionaryRaw,
             ] = await Promise.all([
-                runQuery<any>(MONTHLY_OVERVIEW_SQL),
-                runQuery<any>(CURRENT_MONTH_INCOME_SQL),
-                runQuery<any>(PRIOR_MONTH_INCOME_SQL),
-                runQuery<any>(CURRENT_MONTH_SPEND_SQL),
-                runQuery<any>(PRIOR_MONTH_SPEND_SQL),
-                runQuery<any>(RECURRING_SPEND_SQL),
-                runQuery<any>(DISCRETIONARY_SPEND_SQL),
+                runQuery<any>(MONTHLY_OVERVIEW_SQL(selectedMonth)),
+                runQuery<any>(CURRENT_MONTH_INCOME_SQL(selectedMonth)),
+                runQuery<any>(PRIOR_MONTH_INCOME_SQL(selectedMonth)),
+                runQuery<any>(CURRENT_MONTH_SPEND_SQL(selectedMonth)),
+                runQuery<any>(PRIOR_MONTH_SPEND_SQL(selectedMonth)),
+                runQuery<any>(RECURRING_SPEND_SQL(selectedMonth)),
+                runQuery<any>(DISCRETIONARY_SPEND_SQL(selectedMonth)),
             ]);
 
             const monthly: MonthlyOverview[] = monthlyRaw.map((r: any) => ({
@@ -193,14 +226,14 @@ export function Dashboard() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [selectedMonth]);
 
-    useEffect(() => { fetchAll(); }, [fetchAll]);
+    useEffect(() => {
+        fetchAll();
+    }, [fetchAll]);
 
     const currentNet = state.currentIncome - state.currentSpend;
     const priorNet   = state.priorIncome  - state.priorSpend;
-
-    const currentMonthLabel = new Date().toLocaleString('en-CA', { month: 'long', year: 'numeric' });
 
     return (
         <main className="flex-1 flex flex-col h-full overflow-y-auto w-full">
@@ -212,7 +245,24 @@ export function Dashboard() {
                 <header className="flex items-start justify-between">
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight text-white mb-2">Dashboard</h2>
-                        <p className="text-slate-400">{currentMonthLabel} — financial overview</p>
+                        {monthsList.length > 0 ? (
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(e.target.value)}
+                                    className="bg-slate-800/80 border border-slate-700/50 hover:border-slate-600/80 text-slate-200 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer transition-all"
+                                >
+                                    {monthsList.map((m) => (
+                                        <option key={m.month_val} value={m.month_val} className="bg-slate-900 text-slate-200">
+                                            {m.month_label}
+                                        </option>
+                                    ))}
+                                </select>
+                                <span className="text-slate-400 text-sm">— financial overview</span>
+                            </div>
+                        ) : (
+                            <p className="text-slate-400 text-sm">Loading available months...</p>
+                        )}
                     </div>
                     <button
                         onClick={fetchAll}

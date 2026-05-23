@@ -46,16 +46,15 @@ def execute_query(request: QueryRequest):
 def refresh_pipeline():
     try:
         scripts = [
-            "pipeline/reset_tables.py silver.amex_cobalt",
             "pipeline/table_bootstrap.py",
             "pipeline/bronze.py",
-            "pipeline/silver.py"
+            "pipeline/silver.py",
+            "pipeline/gold.py"
         ]
         
         for script in scripts:
             # Run from /app so paths resolve correctly
             cmd = f"python3 {script}"
-            # Splitting manually since reset_tables takes arguments
             result = subprocess.run(cmd.split(), cwd="/app", capture_output=True, text=True)
             if result.returncode != 0:
                 raise Exception(f"Script {script} failed: {result.stderr}")
@@ -78,31 +77,57 @@ def get_last_refresh():
         }
 
         conn = duckdb.connect(database=DB_PATH, read_only=True)
-        result = conn.execute("""
-            SELECT "source", "last_transaction_date", "last_updated"
-            FROM gold.dim_source
-            ORDER BY "last_updated" DESC
-        """)
-        rows = result.fetchall()
-
+        
         recent_transactions = []
         last_refresh = None
 
-        for row in rows:
-            source_key, last_tx_date, last_updated = row
-            if last_refresh is None or (last_updated and last_updated > last_refresh):
-                last_refresh = last_updated
-            recent_transactions.append({
-                "source": display_names.get(source_key, source_key),
-                "date": last_tx_date.isoformat() if hasattr(last_tx_date, 'isoformat') else str(last_tx_date),
-                "last_updated": last_updated.isoformat() if hasattr(last_updated, 'isoformat') else str(last_updated),
-            })
+        for source_key, src in sources_config.items():
+            silver_table = src.get("silver_table")
+            tx_date_col = src.get("transaction_date")
+            if not silver_table or not tx_date_col:
+                continue
+
+            # Parse schema and table name to check existence
+            table_parts = silver_table.split('.')
+            schema_name = table_parts[0] if len(table_parts) > 1 else 'main'
+            table_name = table_parts[-1]
+
+            try:
+                table_check = conn.execute(
+                    f"SELECT 1 FROM information_schema.tables WHERE table_schema = '{schema_name}' AND table_name = '{table_name}'"
+                ).fetchone()
+            except Exception:
+                table_check = False
+
+            if not table_check:
+                continue
+
+            try:
+                res = conn.execute(f"""
+                    SELECT MAX("{tx_date_col}") AS last_tx_date, MAX(updated_at) AS last_updated
+                    FROM {silver_table}
+                    HAVING MAX("{tx_date_col}") IS NOT NULL
+                """).fetchone()
+                if res and res[0] is not None:
+                    last_tx_date, last_updated = res
+                    recent_transactions.append({
+                        "source": display_names.get(source_key, source_key),
+                        "date": last_tx_date.isoformat() if hasattr(last_tx_date, 'isoformat') else str(last_tx_date),
+                        "last_updated": last_updated.isoformat() if hasattr(last_updated, 'isoformat') else str(last_updated),
+                    })
+            except Exception:
+                pass
+
+        if recent_transactions:
+            # Sort by last_updated descending
+            recent_transactions.sort(key=lambda x: x["last_updated"], reverse=True)
+            last_refresh = recent_transactions[0]["last_updated"]
 
         return {"last_refresh": last_refresh, "recent_transactions": recent_transactions}
     except Exception as e:
-        # Might not exist yet
         return {"last_refresh": None, "recent_transactions": []}
     finally:
         if 'conn' in locals():
             conn.close()
+
             

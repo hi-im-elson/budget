@@ -6,9 +6,10 @@ import type { DashboardView } from '../types';
 interface SidebarProps {
     activeView: DashboardView;
     onNavigate: (view: DashboardView) => void;
+    onRefreshComplete?: () => void;
 }
 
-export function Sidebar({ activeView, onNavigate }: SidebarProps) {
+export function Sidebar({ activeView, onNavigate, onRefreshComplete }: SidebarProps) {
     const navItems: { view: DashboardView; label: string; icon: React.ReactNode }[] = [
         {
             view: 'dashboard',
@@ -48,7 +49,7 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
                 ))}
             </nav>
             <div className="p-4 border-t border-slate-700/50">
-                <RefreshPipeline />
+                <RefreshPipeline onRefreshComplete={onRefreshComplete} />
             </div>
         </div>
     );
