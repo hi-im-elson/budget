@@ -258,7 +258,7 @@ export function Dashboard() {
                                         </option>
                                     ))}
                                 </select>
-                                <span className="text-slate-400 text-sm">— financial overview</span>
+                                <span className="text-slate-400 text-sm"></span>
                             </div>
                         ) : (
                             <p className="text-slate-400 text-sm">Loading available months...</p>
