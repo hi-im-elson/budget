@@ -10,18 +10,20 @@ logger = create_logger("gold.log")
 
 GOLD_DIR = os.path.join(os.path.dirname(__file__), "gold")
 
+# SQL files executed in order
 SQL_FILES = [
     "dim_category.sql",
     "dim_merchant.sql",
     "dim_transaction_type.sql",
     "fact_transactions.sql",
+    "bridge_transfer_pairs.sql",
 ]
 
 
 def populate_dim_source(con, config, logger):
     """Dynamically populate gold.dim_source from configured sources."""
     con.execute("CREATE SCHEMA IF NOT EXISTS gold;")
-    
+
     execute(con, """
         CREATE TABLE IF NOT EXISTS gold.dim_source (
             "source" VARCHAR(255) NOT NULL PRIMARY KEY,
@@ -39,20 +41,19 @@ def populate_dim_source(con, config, logger):
         if not silver_table or not tx_date_col:
             continue
 
-        # Check if table exists in duckdb
         table_parts = silver_table.split('.')
         schema_name = table_parts[0] if len(table_parts) > 1 else 'main'
         table_name = table_parts[-1]
-        
+
         table_check = con.execute(
-            f"SELECT 1 FROM information_schema.tables WHERE table_schema = '{schema_name}' AND table_name = '{table_name}'"
+            f"SELECT 1 FROM information_schema.tables "
+            f"WHERE table_schema = '{schema_name}' AND table_name = '{table_name}'"
         ).fetchone()
-        
+
         if not table_check:
             logger.warning(f"Silver table {silver_table} for source {source_key} does not exist. Skipping.")
             continue
 
-        # Insert or replace from silver table
         query = f"""
             INSERT OR REPLACE INTO gold.dim_source ("source", "last_transaction_date", "last_updated")
             SELECT
@@ -66,6 +67,23 @@ def populate_dim_source(con, config, logger):
             execute(con, query, logger)
         except Exception as e:
             logger.error(f"Failed to populate dim_source for {source_key}: {e}")
+
+
+def silver_table_exists(con, config, source_key):
+    """Return True if the silver table for the given source_key exists in DuckDB."""
+    sources = config.get("sources", {})
+    source_config = sources.get(source_key, {})
+    silver_table = source_config.get("silver_table")
+    if not silver_table:
+        return False
+    parts = silver_table.split('.')
+    schema_name = parts[0] if len(parts) > 1 else 'main'
+    table_name = parts[-1]
+    result = con.execute(
+        f"SELECT 1 FROM information_schema.tables "
+        f"WHERE table_schema = '{schema_name}' AND table_name = '{table_name}'"
+    ).fetchone()
+    return result is not None
 
 
 def run_sql_file(con, filename: str):
@@ -90,17 +108,25 @@ def main():
         logger.info("Starting Gold Pipeline...")
         logger.info("Dynamically populating gold.dim_source...")
         populate_dim_source(con, config, logger)
-        
+
+        # Log which optional sources are present so fact_transactions.sql
+        # can be understood in context. The SQL itself guards via LEFT JOIN
+        # on silver tables, missing tables result in zero rows, not errors.
+        for source in ["rbc-chequing"]:
+            present = silver_table_exists(con, config, source)
+            logger.info(f"Optional source '{source}': {'present' if present else 'absent — rows will be skipped'}")
+
         for sql_file in SQL_FILES:
             logger.info(f"Loading {sql_file}...")
             run_sql_file(con, sql_file)
+
         logger.info("Gold Pipeline completed successfully.")
+
     except Exception as e:
         logger.error(f"Gold Pipeline failed: {e}")
         raise
     finally:
         con.close()
-
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ tables:
         - "Use Points for Purchases"
       rbc_mastercard:
         - "PAYMENT - THANK YOU / PAI EMENT - MERCI"
+      rbc_chequing: []
       wealthsimple_cash: []
     columns:
       - name: "id"
@@ -100,4 +101,41 @@ tables:
         constraints: "DEFAULT 'CAD'"
       - name: "source_id"
         type: "UBIGINT"
+        constraints: "NOT NULL"
+      - name: "transfer_pair_id"
+        type: "VARCHAR"
+        constraints: ""   # nullable — NULL means not part of a matched transfer pair
+
+  transfer_pairs:
+    target_table: gold.transfer_pairs
+    columns:
+      - name: "pair_id"
+        type: "VARCHAR"
+        constraints: "NOT NULL PRIMARY KEY"
+      - name: "outbound_id"
+        type: "VARCHAR"
+        constraints: "NOT NULL"
+      - name: "inbound_id"
+        type: "VARCHAR"
+        constraints: "NOT NULL"
+      - name: "outbound_source"
+        type: "VARCHAR"
+        constraints: "NOT NULL"
+      - name: "inbound_source"
+        type: "VARCHAR"
+        constraints: "NOT NULL"
+      - name: "amount"
+        type: "DECIMAL(10,2)"
+        constraints: "NOT NULL"
+      - name: "outbound_date"
+        type: "DATE"
+        constraints: "NOT NULL"
+      - name: "inbound_date"
+        type: "DATE"
+        constraints: "NOT NULL"
+      - name: "confidence"
+        type: "VARCHAR(10)"
+        constraints: "NOT NULL"
+      - name: "match_reason"
+        type: "VARCHAR(255)"
         constraints: "NOT NULL"

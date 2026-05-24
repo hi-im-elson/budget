@@ -38,7 +38,7 @@ def generate_dml(source_table: str, target_table: str, source_config: dict) -> s
                 # Generate hash from primary key columns
                 source_cols.append(generate_primary_key_sql(primary_key))
             else:
-                # remove id from target_cols; use default auto increment
+                # remove id from target_cols. use default auto increment
                 target_cols.remove(f'"{name}"') 
 
         elif col.get("default") == "CURRENT_TIMESTAMP":
