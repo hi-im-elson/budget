@@ -1,33 +1,3 @@
--- gold.transfer_pairs
--- ─────────────────────────────────────────────────────────────────────────────
--- Reconciles the two legs of every internal transfer (e.g. RBC Chequing →
--- Wealthsimple, Chequing → Amex, etc.) so they can be excluded from income
--- and expense calculations without hardcoding account descriptions.
---
--- Confidence levels:
---   high   – the description on either leg contains an explicit reference to
---             the counterpart account (e.g. "wealthsimple" on the RBC side,
---             "PAYMENT RECEIVED" on the Amex side, "mastercard" in an OBP_OUT).
---             These are certain transfers.
---   medium – amount + date match across sources with transfer-eligible type
---             codes, but no explicit account reference in either description.
---             Statistically very likely to be a self-transfer, but worth a
---             manual audit query if something looks off.
---
--- Matching algorithm:
---   1. Candidate pool: all fact_transactions rows with a type_code or direction
---      that indicates a possible transfer leg (see CTE below).
---   2. Self-join on: ABS(amount) exact match, transaction_date within ±1 day,
---      different sources, one leg outbound/transfer + one leg inbound/transfer.
---   3. Confidence assigned per above rules.
---   4. Deduplication: if one inbound leg matches multiple outbound legs of the
---      same amount on the same day, take the highest-confidence match; ties
---      broken by preferring the exact-date match, then by source order.
---
--- After this table is populated, update fact_transactions.transfer_pair_id
--- using the UPDATE statement at the bottom of this file.
--- ─────────────────────────────────────────────────────────────────────────────
-
 CREATE TABLE IF NOT EXISTS gold.bridge_transfer_pairs (
     pair_id         VARCHAR      NOT NULL PRIMARY KEY,   -- SHA256(outbound_id || inbound_id)
     outbound_id     VARCHAR      NOT NULL,               -- fact_transactions.id (sending leg)

@@ -143,7 +143,7 @@ const EMPTY_STATE: DashboardState = {
 
 export function Dashboard() {
     const [state, setState] = useState<DashboardState>(EMPTY_STATE);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [monthsList, setMonthsList] = useState<{ month_val: string; month_label: string }[]>([]);
     const [selectedMonth, setSelectedMonth] = useState<string>('');
