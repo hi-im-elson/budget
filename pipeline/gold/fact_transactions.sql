@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS gold.fact_transactions (
+CREATE OR REPLACE TABLE gold.fact_transactions (
     "id"               VARCHAR NOT NULL PRIMARY KEY,
     "transaction_date" DATE NOT NULL,
     "source"           VARCHAR NOT NULL,
@@ -11,12 +11,11 @@ CREATE TABLE IF NOT EXISTS gold.fact_transactions (
     "recipient_name"   VARCHAR,
     "currency"         VARCHAR(3) DEFAULT 'CAD',
     "source_id"        UBIGINT NOT NULL,
-    "transfer_pair_id" VARCHAR                     -- populated by transfer_pairs.sql
+    "transfer_pair_id" VARCHAR
 );
 
 DELETE FROM gold.fact_transactions;
 
--- ─── Amex Cobalt ─────────────────────────────────────────────────────────────
 INSERT OR IGNORE INTO gold.fact_transactions
 SELECT
     SHA256('amex-cobalt' || CAST(s.id AS VARCHAR)) AS id,
@@ -52,7 +51,6 @@ LEFT JOIN gold.dim_merchant dm
     ON dm.source = 'amex-cobalt'
     AND TRIM(dm.merchant) = TRIM(REGEXP_REPLACE(s.merchant, '\s+', ' ', 'g'));
 
--- ─── RBC Mastercard ──────────────────────────────────────────────────────────
 INSERT OR IGNORE INTO gold.fact_transactions
 SELECT
     SHA256('rbc-mastercard' || CAST(s.id AS VARCHAR)) AS id,
@@ -85,8 +83,6 @@ LEFT JOIN gold.dim_merchant dm
     ON dm.source = 'rbc-mastercard'
     AND TRIM(dm.merchant) = TRIM(REGEXP_REPLACE(s.description, '\s+', ' ', 'g'));
 
--- ─── RBC Chequing ────────────────────────────────────────────────────────────
--- Positive CAD = money IN. Negative CAD = money OUT.
 INSERT OR IGNORE INTO gold.fact_transactions
 SELECT
     SHA256('rbc-chequing' || CAST(s.id AS VARCHAR))    AS id,
@@ -94,53 +90,43 @@ SELECT
     'rbc-chequing'                                      AS source,
     dm.id                                               AS merchant_id,
     CASE
-        -- Outbound: credit card payments to own cards
         WHEN s.cad < 0
              AND (   LOWER(s.description) LIKE '%amex%'
                   OR LOWER(s.description) LIKE '%american express%'
                   OR LOWER(s.description) LIKE '%mastercard%'
                   OR LOWER(s.description) LIKE '%visa%'
                  )                                      THEN 'cc_payment'
-        -- Outbound: transfers to Wealthsimple or own accounts
         WHEN s.cad < 0
              AND (   LOWER(s.description) LIKE '%wealthsimple%'
                   OR LOWER(s.description) LIKE '%wlthsimple%'
                   OR LOWER(s.description) LIKE '%transfer%'
                  )                                      THEN 'account_transfer'
-        -- Outbound: e-Transfer sent
         WHEN s.cad < 0
              AND LOWER(s.description) LIKE '%e-transfer%'
                                                         THEN 'e_transfer_out'
-        -- Outbound: bill payments
         WHEN s.cad < 0
              AND LOWER(s.description) LIKE '%bill payment%'
                                                         THEN 'bill_payment'
-        -- Inbound: payroll / direct deposit
         WHEN s.cad > 0
              AND (   LOWER(s.description) LIKE '%themis%'
                   OR LOWER(s.description) LIKE '%payroll%'
                   OR LOWER(s.description) LIKE '%direct dep%'
                  )                                      THEN 'payroll'
-        -- Inbound: e-Transfer received
         WHEN s.cad > 0
              AND LOWER(s.description) LIKE '%e-transfer%'
                                                         THEN 'e_transfer_in'
-        -- Inbound: government / CRA deposits
         WHEN s.cad > 0
              AND (   LOWER(s.description) LIKE '%canada revenue%'
                   OR LOWER(s.description) LIKE '%cra%'
                   OR LOWER(s.description) LIKE '%tax refund%'
                   OR LOWER(s.description) LIKE '%government%'
                  )                                      THEN 'deposit'
-        -- Inbound: generic deposit
         WHEN s.cad > 0                                  THEN 'deposit'
-        -- Outbound: default
         ELSE 'spending'
     END                                                 AS type_code,
     s.description                                       AS description,
     ABS(s.cad)                                          AS amount,
     CASE
-        -- Outbound transfers → direction = 'transfer' (not an expense)
         WHEN s.cad < 0
              AND (   LOWER(s.description) LIKE '%amex%'
                   OR LOWER(s.description) LIKE '%american express%'
@@ -163,7 +149,6 @@ LEFT JOIN gold.dim_merchant dm
     ON dm.source = 'rbc-chequing'
     AND TRIM(dm.merchant) = TRIM(REGEXP_REPLACE(s.description, '\s+', ' ', 'g'));
 
--- ─── Wealthsimple Cash ───────────────────────────────────────────────────────
 INSERT OR IGNORE INTO gold.fact_transactions
 SELECT
     SHA256('wealthsimple-cash' || CAST(s.id AS VARCHAR)) AS id,

@@ -1,14 +1,14 @@
-CREATE TABLE IF NOT EXISTS gold.bridge_transfer_pairs (
-    pair_id         VARCHAR      NOT NULL PRIMARY KEY,   -- SHA256(outbound_id || inbound_id)
-    outbound_id     VARCHAR      NOT NULL,               -- fact_transactions.id (sending leg)
-    inbound_id      VARCHAR      NOT NULL,               -- fact_transactions.id (receiving leg)
-    outbound_source VARCHAR      NOT NULL,
-    inbound_source  VARCHAR      NOT NULL,
+CREATE OR REPLACE TABLE gold.bridge_transfer_pairs (
+    pair_id         VARCHAR       NOT NULL PRIMARY KEY,
+    outbound_id     VARCHAR       NOT NULL,
+    inbound_id      VARCHAR       NOT NULL,
+    outbound_source VARCHAR       NOT NULL,
+    inbound_source  VARCHAR       NOT NULL,
     amount          DECIMAL(10,2) NOT NULL,
-    outbound_date   DATE         NOT NULL,
-    inbound_date    DATE         NOT NULL,
-    confidence      VARCHAR(10)  NOT NULL,               -- 'high' | 'medium'
-    match_reason    VARCHAR(255) NOT NULL                -- human-readable explanation
+    outbound_date   DATE          NOT NULL,
+    inbound_date    DATE          NOT NULL,
+    confidence      VARCHAR(10)   NOT NULL,
+    match_reason    VARCHAR(255)  NOT NULL
 );
 
 DELETE FROM gold.bridge_transfer_pairs;
@@ -89,9 +89,9 @@ candidate_pairs AS (
 
     FROM outbound_legs o
     JOIN inbound_legs i
-        ON  o.source            != i.source                          -- must be different accounts
-        AND o.amount             = i.amount                          -- exact amount match
-        AND ABS(DATEDIFF('day', o.transaction_date, i.transaction_date)) <= 1  -- within ±1 day
+        ON  o.source            != i.source
+        AND o.amount             = i.amount
+        AND ABS(DATEDIFF('day', o.transaction_date, i.transaction_date)) <= 1
 ),
 
 ranked_pairs AS (
@@ -112,7 +112,6 @@ ranked_pairs AS (
             ELSE 'Amount + date match across sources. No explicit account reference'
         END AS match_reason,
 
-        -- Rank: prefer high confidence, then same-day, then by source name (deterministic)
         ROW_NUMBER() OVER (
             PARTITION BY inbound_id
             ORDER BY

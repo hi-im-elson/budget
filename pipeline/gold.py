@@ -92,7 +92,15 @@ def run_sql_file(con, filename: str):
     with open(path, "r") as f:
         sql = f.read()
 
-    statements = [s.strip() for s in sql.split(";") if s.strip() and not s.strip().startswith("--")]
+    statements = []
+    for chunk in sql.split(";"):
+        stripped = "\n".join(
+            line for line in chunk.splitlines()
+            if not line.strip().startswith("--")
+        ).strip()
+        if stripped:
+            statements.append(stripped)
+
     for stmt in statements:
         execute(con, stmt, logger)
     logger.info(f"{filename} complete.")

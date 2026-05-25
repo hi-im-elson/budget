@@ -106,8 +106,8 @@ tables:
         type: "VARCHAR"
         constraints: ""   # nullable — NULL means not part of a matched transfer pair
 
-  transfer_pairs:
-    target_table: gold.transfer_pairs
+  bridge_transfer_pairs:
+    target_table: gold.bridge_transfer_pairs
     columns:
       - name: "pair_id"
         type: "VARCHAR"
