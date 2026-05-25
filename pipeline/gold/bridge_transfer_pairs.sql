@@ -13,13 +13,6 @@ CREATE TABLE IF NOT EXISTS gold.bridge_transfer_pairs (
 
 DELETE FROM gold.bridge_transfer_pairs;
 
--- ─── Step 1: candidate pool ──────────────────────────────────────────────────
--- Rows eligible to be matched as a transfer leg.
--- Outbound-eligible: direction = 'transfer' OR direction = 'outbound' with a
---   type_code that commonly represents a self-transfer.
--- Inbound-eligible:  direction = 'inbound' OR direction = 'transfer' with a
---   type_code that can represent the receiving end of a self-transfer.
-
 WITH transfer_eligible AS (
     SELECT
         id,
@@ -54,7 +47,6 @@ inbound_legs AS (
     WHERE leg_role IN ('inbound', 'both')
 ),
 
--- ─── Step 2: candidate pairs ─────────────────────────────────────────────────
 candidate_pairs AS (
     SELECT
         o.id                AS outbound_id,
@@ -71,11 +63,8 @@ candidate_pairs AS (
 
         o.amount            AS amount,
 
-        -- Date proximity score (0 = same day, 1 = ±1 day)
         ABS(DATEDIFF('day', o.transaction_date, i.transaction_date)) AS day_gap,
 
-        -- ── Confidence signals ──────────────────────────────────────────────
-        -- Does the outbound description name the destination account?
         CASE WHEN
             LOWER(o.description) LIKE '%wealthsimple%'
          OR LOWER(o.description) LIKE '%wlthsimple%'
@@ -88,7 +77,6 @@ candidate_pairs AS (
          OR LOWER(o.description) LIKE '%transfer%'
         THEN TRUE ELSE FALSE END                AS outbound_names_dest,
 
-        -- Does the inbound description name the source account?
         CASE WHEN
             LOWER(i.description) LIKE '%wealthsimple%'
          OR LOWER(i.description) LIKE '%wlthsimple%'
@@ -106,8 +94,6 @@ candidate_pairs AS (
         AND ABS(DATEDIFF('day', o.transaction_date, i.transaction_date)) <= 1  -- within ±1 day
 ),
 
--- ─── Step 3: score and rank, deduplicate ─────────────────────────────────────
--- If one inbound leg matches multiple outbound legs, keep the best match.
 ranked_pairs AS (
     SELECT
         *,
@@ -145,7 +131,6 @@ ranked_pairs AS (
     FROM candidate_pairs
 )
 
--- ─── Step 4: insert deduplicated pairs ───────────────────────────────────────
 INSERT OR IGNORE INTO gold.bridge_transfer_pairs
 SELECT
     SHA256(outbound_id || inbound_id) AS pair_id,
@@ -161,9 +146,6 @@ SELECT
 FROM ranked_pairs
 WHERE rank_by_inbound  = 1
   AND rank_by_outbound = 1;
-
--- ─── Step 5: stamp transfer_pair_id back onto fact_transactions ──────────────
--- Requires the transfer_pair_id column to already exist (added in fact_transactions.sql).
 
 UPDATE gold.fact_transactions
 SET transfer_pair_id = tp.pair_id

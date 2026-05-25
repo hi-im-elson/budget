@@ -17,16 +17,16 @@ async function runQuery<T>(query: string): Promise<T[]> {
 
 const MONTHS_LIST_SQL = `
 SELECT DISTINCT
-    strftime(date_trunc('month', transaction_date), '%Y-%m')       AS month_val,
-    strftime(date_trunc('month', transaction_date), '%b %Y')       AS month_label
+    strftime('%Y-%m', date_trunc('month', transaction_date))       AS month_val,
+    strftime('%b %Y', date_trunc('month', transaction_date))       AS month_label
 FROM gold.fact_transactions
 ORDER BY 1 DESC;
 `;
 
 const MONTHLY_OVERVIEW_SQL = (selectedMonth: string) => `
 SELECT
-    strftime(date_trunc('month', transaction_date), '%Y-%m')       AS month,
-    strftime(date_trunc('month', transaction_date), '%b %Y')       AS month_label,
+    strftime('%Y-%m', date_trunc('month', transaction_date))       AS month,
+    strftime('%b %Y', date_trunc('month', transaction_date))       AS month_label,
     SUM(CASE WHEN direction = 'inbound'  AND type_code NOT IN ('cashback','refund')
              THEN amount ELSE 0 END)                               AS income,
     SUM(CASE WHEN direction = 'outbound' AND type_code NOT IN ('cc_payment','account_transfer','pre_auth_debit')
