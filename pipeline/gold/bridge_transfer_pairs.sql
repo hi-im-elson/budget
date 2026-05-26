@@ -68,6 +68,7 @@ candidate_pairs AS (
         CASE WHEN
             LOWER(o.description) LIKE '%wealthsimple%'
          OR LOWER(o.description) LIKE '%wlthsimple%'
+         OR LOWER(o.description) LIKE '%ws investments%'
          OR LOWER(o.description) LIKE '%amex%'
          OR LOWER(o.description) LIKE '%american express%'
          OR LOWER(o.description) LIKE '%mastercard%'
@@ -80,6 +81,7 @@ candidate_pairs AS (
         CASE WHEN
             LOWER(i.description) LIKE '%wealthsimple%'
          OR LOWER(i.description) LIKE '%wlthsimple%'
+         OR LOWER(i.description) LIKE '%ws investments%'
          OR LOWER(i.description) LIKE '%rbc%'
          OR LOWER(i.description) LIKE '%royal bank%'
          OR LOWER(i.description) LIKE '%payment received%'

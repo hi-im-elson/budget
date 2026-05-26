@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS gold.dim_merchant (
+CREATE OR REPLACE TABLE gold.dim_merchant (
     "id" VARCHAR(255) NOT NULL PRIMARY KEY,
     "source" VARCHAR(255) NOT NULL,
     "merchant" VARCHAR(255),
@@ -30,6 +30,13 @@ FROM silver.rbc_mastercard
 WHERE TRIM(REGEXP_REPLACE(description, '\s+', ' ', 'g')) NOT IN (
     'PAYMENT - THANK YOU / PAI EMENT - MERCI'
 );
+
+INSERT OR IGNORE INTO gold.dim_merchant (id, source, merchant)
+SELECT DISTINCT
+    SHA256('rbc-chequing' || TRIM(REGEXP_REPLACE(description, '\s+', ' ', 'g'))) AS id,
+    'rbc-chequing' AS source,
+    TRIM(REGEXP_REPLACE(description, '\s+', ' ', 'g')) AS merchant
+FROM silver.rbc_chequing;
 
 INSERT OR IGNORE INTO gold.dim_merchant (id, source, merchant)
 SELECT DISTINCT

@@ -41,7 +41,7 @@ SELECT
                                                            THEN 'inbound'
         ELSE 'outbound'
     END                                            AS direction,
-    dm.category_id                                 AS category_id,
+    COALESCE(dm.category_id, dtc.default_category_id)  AS category_id,
     NULL                                           AS recipient_name,
     'CAD'                                          AS currency,
     s.id                                           AS source_id,
@@ -49,7 +49,17 @@ SELECT
 FROM silver.amex_cobalt s
 LEFT JOIN gold.dim_merchant dm
     ON dm.source = 'amex-cobalt'
-    AND TRIM(dm.merchant) = TRIM(REGEXP_REPLACE(s.merchant, '\s+', ' ', 'g'));
+    AND TRIM(dm.merchant) = TRIM(REGEXP_REPLACE(s.merchant, '\s+', ' ', 'g'))
+LEFT JOIN gold.dim_type_category dtc
+    ON dtc.type_code = CASE
+        WHEN s.merchant = 'PAYMENT RECEIVED - THANK YOU'   THEN 'cc_payment'
+        WHEN s.merchant = 'MEMBERSHIP FEE INSTALLMENT'     THEN 'fee'
+        WHEN s.merchant = 'Use Points for Purchases'       THEN 'cashback'
+        WHEN s.merchant = 'Air Canada Pay with Points'     THEN 'cashback'
+        WHEN s.amount < 0 AND s.merchant != 'PAYMENT RECEIVED - THANK YOU'
+                                                           THEN 'refund'
+        ELSE 'spending'
+    END;
 
 INSERT OR IGNORE INTO gold.fact_transactions
 SELECT
@@ -73,7 +83,7 @@ SELECT
                                                       THEN 'inbound'
         ELSE 'outbound'
     END                                               AS direction,
-    dm.category_id                                    AS category_id,
+    COALESCE(dm.category_id, dtc.default_category_id) AS category_id,
     NULL                                              AS recipient_name,
     'CAD'                                             AS currency,
     s.id                                              AS source_id,
@@ -81,7 +91,13 @@ SELECT
 FROM silver.rbc_mastercard s
 LEFT JOIN gold.dim_merchant dm
     ON dm.source = 'rbc-mastercard'
-    AND TRIM(dm.merchant) = TRIM(REGEXP_REPLACE(s.description, '\s+', ' ', 'g'));
+    AND TRIM(dm.merchant) = TRIM(REGEXP_REPLACE(s.description, '\s+', ' ', 'g'))
+LEFT JOIN gold.dim_type_category dtc
+    ON dtc.type_code = CASE
+        WHEN s.description = 'PAYMENT - THANK YOU / PAI EMENT - MERCI' THEN 'cc_payment'
+        WHEN s.cad > 0 AND s.description != 'PAYMENT - THANK YOU / PAI EMENT - MERCI' THEN 'refund'
+        ELSE 'spending'
+    END;
 
 INSERT OR IGNORE INTO gold.fact_transactions
 SELECT
@@ -97,13 +113,13 @@ SELECT
                   OR LOWER(s.description) LIKE '%visa%'
                  )                                      THEN 'cc_payment'
         WHEN s.cad < 0
+             AND LOWER(s.description) LIKE '%e-transfer%'
+                                                        THEN 'e_transfer_out'
+        WHEN s.cad < 0
              AND (   LOWER(s.description) LIKE '%wealthsimple%'
                   OR LOWER(s.description) LIKE '%wlthsimple%'
                   OR LOWER(s.description) LIKE '%transfer%'
                  )                                      THEN 'account_transfer'
-        WHEN s.cad < 0
-             AND LOWER(s.description) LIKE '%e-transfer%'
-                                                        THEN 'e_transfer_out'
         WHEN s.cad < 0
              AND LOWER(s.description) LIKE '%bill payment%'
                                                         THEN 'bill_payment'
@@ -121,6 +137,11 @@ SELECT
                   OR LOWER(s.description) LIKE '%tax refund%'
                   OR LOWER(s.description) LIKE '%government%'
                  )                                      THEN 'deposit'
+        WHEN s.cad > 0
+             AND (   LOWER(s.description) LIKE '%investment%'
+                  OR LOWER(s.description) LIKE '%wealthsimple%'
+                  OR LOWER(s.description) LIKE '%wlthsimple%'
+                 )                                      THEN 'account_transfer'
         WHEN s.cad > 0                                  THEN 'deposit'
         ELSE 'spending'
     END                                                 AS type_code,
@@ -134,12 +155,20 @@ SELECT
                   OR LOWER(s.description) LIKE '%visa%'
                   OR LOWER(s.description) LIKE '%wealthsimple%'
                   OR LOWER(s.description) LIKE '%wlthsimple%'
-                  OR LOWER(s.description) LIKE '%transfer%'
+                 )                                      THEN 'transfer'
+        WHEN s.cad < 0
+             AND LOWER(s.description) LIKE '%transfer%'
+             AND LOWER(s.description) NOT LIKE '%e-transfer%'
+                                                        THEN 'transfer'
+        WHEN s.cad > 0
+             AND (   LOWER(s.description) LIKE '%investment%'
+                  OR LOWER(s.description) LIKE '%wealthsimple%'
+                  OR LOWER(s.description) LIKE '%wlthsimple%'
                  )                                      THEN 'transfer'
         WHEN s.cad > 0                                  THEN 'inbound'
         ELSE 'outbound'
     END                                                 AS direction,
-    dm.category_id                                      AS category_id,
+    COALESCE(dm.category_id, dtc.default_category_id)  AS category_id,
     NULL                                                AS recipient_name,
     'CAD'                                               AS currency,
     s.id                                                AS source_id,
@@ -147,7 +176,39 @@ SELECT
 FROM silver.rbc_chequing s
 LEFT JOIN gold.dim_merchant dm
     ON dm.source = 'rbc-chequing'
-    AND TRIM(dm.merchant) = TRIM(REGEXP_REPLACE(s.description, '\s+', ' ', 'g'));
+    AND TRIM(dm.merchant) = TRIM(REGEXP_REPLACE(s.description, '\s+', ' ', 'g'))
+LEFT JOIN gold.dim_type_category dtc
+    ON dtc.type_code = CASE
+        WHEN s.cad < 0
+             AND (   LOWER(s.description) LIKE '%amex%'
+                  OR LOWER(s.description) LIKE '%american express%'
+                  OR LOWER(s.description) LIKE '%mastercard%'
+                  OR LOWER(s.description) LIKE '%visa%'
+                 )                                      THEN 'cc_payment'
+        WHEN s.cad < 0
+             AND LOWER(s.description) LIKE '%e-transfer%' THEN 'e_transfer_out'
+        WHEN s.cad < 0
+             AND (   LOWER(s.description) LIKE '%wealthsimple%'
+                  OR LOWER(s.description) LIKE '%wlthsimple%'
+                  OR LOWER(s.description) LIKE '%transfer%'
+                 )                                      THEN 'account_transfer'
+        WHEN s.cad < 0
+             AND LOWER(s.description) LIKE '%bill payment%' THEN 'bill_payment'
+        WHEN s.cad > 0
+             AND (   LOWER(s.description) LIKE '%themis%'
+                  OR LOWER(s.description) LIKE '%payroll%'
+                  OR LOWER(s.description) LIKE '%direct dep%'
+                 )                                      THEN 'payroll'
+        WHEN s.cad > 0
+             AND LOWER(s.description) LIKE '%e-transfer%' THEN 'e_transfer_in'
+        WHEN s.cad > 0
+             AND (   LOWER(s.description) LIKE '%investment%'
+                  OR LOWER(s.description) LIKE '%wealthsimple%'
+                  OR LOWER(s.description) LIKE '%wlthsimple%'
+                 )                                      THEN 'account_transfer'
+        WHEN s.cad > 0                                  THEN 'deposit'
+        ELSE 'spending'
+    END;
 
 INSERT OR IGNORE INTO gold.fact_transactions
 SELECT
@@ -159,15 +220,15 @@ SELECT
         WHEN s.transaction = 'SPEND'      THEN 'spending'
         WHEN s.transaction = 'OBP_OUT'    THEN 'bill_payment'
         WHEN s.transaction = 'E_TRFOUT'   THEN 'e_transfer_out'
-        WHEN s.transaction = 'E_TRFIN'    THEN 'e_transfer_in'
+        WHEN s.transaction = 'E_TRFIN'    THEN 'reimbursement'
         WHEN s.transaction = 'P2P_SENT'   THEN 'p2p'
         WHEN s.transaction = 'AFT_IN'     THEN
             CASE
                 WHEN LOWER(s.description) LIKE '%themis%' THEN 'payroll'
-                ELSE 'deposit'
+                ELSE 'account_transfer'
             END
         WHEN s.transaction = 'AFT_OUT'    THEN 'pre_auth_debit'
-        WHEN s.transaction = 'EFT'        THEN 'deposit'
+        WHEN s.transaction = 'EFT'        THEN 'account_transfer'
         WHEN s.transaction = 'EFTOUT'     THEN 'account_transfer'
         WHEN s.transaction = 'TRFOUT'     THEN 'account_transfer'
         WHEN s.transaction = 'INT'        THEN 'interest_earned'
@@ -177,15 +238,18 @@ SELECT
     s.description                                        AS description,
     ABS(s.amount)                                        AS amount,
     CASE
-        WHEN s.transaction IN ('E_TRFIN', 'AFT_IN', 'EFT', 'INT', 'CASHBACK')
+        WHEN s.transaction IN ('AFT_IN', 'EFT', 'EFTOUT', 'TRFOUT')
+                                                         THEN 'transfer'
+        WHEN s.transaction IN ('E_TRFIN', 'INT', 'CASHBACK')
                                                          THEN 'inbound'
-        WHEN s.transaction IN ('TRFOUT', 'EFTOUT')       THEN 'transfer'
+        WHEN s.transaction = 'AFT_IN'
+             AND LOWER(s.description) LIKE '%themis%'   THEN 'inbound'
         WHEN s.transaction = 'OBP_OUT'
              AND LOWER(s.description) LIKE '%mastercard%'
                                                          THEN 'transfer'
         ELSE 'outbound'
     END                                                  AS direction,
-    COALESCE(etr.category_id, dm.category_id)            AS category_id,
+    COALESCE(etr.category_id, dm.category_id, dtc.default_category_id) AS category_id,
     etr.recipient_name                                   AS recipient_name,
     s.currency                                           AS currency,
     s.id                                                 AS source_id,
@@ -197,4 +261,20 @@ LEFT JOIN gold.dim_merchant dm
 LEFT JOIN mappings.etransfer_recipients etr
     ON s.date = etr.date
     AND ABS(s.amount) = ABS(etr.amount)
-    AND s.transaction IN ('E_TRFOUT', 'E_TRFIN', 'P2P_SENT');
+    AND s.transaction IN ('E_TRFOUT', 'E_TRFIN', 'P2P_SENT')
+LEFT JOIN gold.dim_type_category dtc
+    ON dtc.type_code = CASE
+        WHEN s.transaction = 'SPEND'      THEN 'spending'
+        WHEN s.transaction = 'OBP_OUT'    THEN 'bill_payment'
+        WHEN s.transaction = 'E_TRFOUT'   THEN 'e_transfer_out'
+        WHEN s.transaction = 'E_TRFIN'    THEN 'reimbursement'
+        WHEN s.transaction = 'P2P_SENT'   THEN 'p2p'
+        WHEN s.transaction = 'AFT_IN'     THEN
+            CASE WHEN LOWER(s.description) LIKE '%themis%' THEN 'payroll'
+                 ELSE 'account_transfer' END
+        WHEN s.transaction = 'AFT_OUT'    THEN 'pre_auth_debit'
+        WHEN s.transaction IN ('EFT', 'EFTOUT', 'TRFOUT') THEN 'account_transfer'
+        WHEN s.transaction = 'INT'        THEN 'interest_earned'
+        WHEN s.transaction = 'CASHBACK'   THEN 'cashback'
+        ELSE 'spending'
+    END;
