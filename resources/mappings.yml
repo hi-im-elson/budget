@@ -92,9 +92,23 @@ mappings:
       lookup_column: "category"
       return_column: "id"
 
-  income_rules:
-    table: "mappings.income_rules"
-    csv_file: "income_rules.csv"
+  # ---------------------------------------------------------------------------
+  # classification_rules
+  #   Keyword-based type_code override for RBC chequing and Wealthsimple inflows.
+  #   Replaces all hardcoded employer/insurer names in fact_transactions.sql.
+  #   Add new rows here to handle new payroll sources, insurers, or deposit types
+  #   without touching any SQL.
+  #
+  #   Columns:
+  #     source       — matches fact_transactions.source ('rbc-chequing', 'wealthsimple-cash')
+  #     match_field  — which field to search ('description')
+  #     keyword      — lowercase substring to match (LOWER(field) LIKE '%keyword%')
+  #     type_code    — type_code to assign when the keyword matches
+  #     priority     — lower number = evaluated first (used for ordering in SQL CTE)
+  # ---------------------------------------------------------------------------
+  classification_rules:
+    table: "mappings.classification_rules"
+    csv_file: "classification_rules.csv"
     columns:
       - name: "id"
         type: "INTEGER"
@@ -103,16 +117,129 @@ mappings:
       - name: "source"
         type: "VARCHAR(100)"
         constraints: "NOT NULL"
+      - name: "match_field"
+        type: "VARCHAR(50)"
+        constraints: "NOT NULL"
       - name: "keyword"
         type: "VARCHAR(255)"
         constraints: "NOT NULL"
       - name: "type_code"
         type: "VARCHAR(50)"
         constraints: "NOT NULL"
+      - name: "priority"
+        type: "INTEGER"
+        constraints: "NOT NULL DEFAULT 99"
     insert_columns:
       - name: "source"
         source: "source"
+      - name: "match_field"
+        source: "match_field"
       - name: "keyword"
         source: "keyword"
       - name: "type_code"
         source: "type_code"
+      - name: "priority"
+        source: "priority"
+
+  # ---------------------------------------------------------------------------
+  # etransfer_rules
+  #   Name-pattern rules for recurring e-transfer payees/senders.
+  #   Matches on recipient/sender name substring in the transaction description.
+  #   Takes precedence over generic e_transfer_in / e_transfer_out type_codes.
+  #
+  #   Columns:
+  #     name_pattern  — lowercase substring matched against description
+  #     direction     — 'inbound' or 'outbound' (guards against cross-matching)
+  #     type_code     — type_code to assign (e.g. 'rent', 'parking', 'external_transfer')
+  #     category_name — human-readable category for the lookup join
+  #     notes         — free-text description for documentation
+  # ---------------------------------------------------------------------------
+  etransfer_rules:
+    table: "mappings.etransfer_rules"
+    csv_file: "etransfer_rules.csv"
+    columns:
+      - name: "id"
+        type: "INTEGER"
+        constraints: "NOT NULL PRIMARY KEY"
+        auto_increment: true
+      - name: "name_pattern"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL"
+      - name: "direction"
+        type: "VARCHAR(20)"
+        constraints: "NOT NULL"
+      - name: "type_code"
+        type: "VARCHAR(50)"
+        constraints: "NOT NULL"
+      - name: "category_id"
+        type: "INTEGER"
+      - name: "notes"
+        type: "VARCHAR(255)"
+    insert_columns:
+      - name: "name_pattern"
+        source: "name_pattern"
+      - name: "direction"
+        source: "direction"
+      - name: "type_code"
+        source: "type_code"
+      - name: "notes"
+        source: "notes"
+        nullable: true
+    foreign_key_lookup:
+      insert_column: "category_id"
+      source_column: "category_name"
+      lookup_table: "mappings.categories"
+      lookup_column: "category"
+      return_column: "id"
+
+  # ---------------------------------------------------------------------------
+  # recurring_vendor_rules
+  #   Maps recurring vendor keyword substrings to category + subcategory.
+  #   Used by dim_merchant UPDATE after merchant population to tag known recurring
+  #   vendors (utilities, phone, insurance, subscriptions) with the right category
+  #   and mark is_subscription=true.
+  #
+  #   Columns:
+  #     keyword       — lowercase substring matched against merchant name
+  #     category_name — top-level category
+  #     subcategory   — subcategory label
+  #     type_code     — preferred type_code hint for these merchants
+  #     notes         — documentation
+  # ---------------------------------------------------------------------------
+  recurring_vendor_rules:
+    table: "mappings.recurring_vendor_rules"
+    csv_file: "recurring_vendor_rules.csv"
+    columns:
+      - name: "id"
+        type: "INTEGER"
+        constraints: "NOT NULL PRIMARY KEY"
+        auto_increment: true
+      - name: "keyword"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL"
+      - name: "category_id"
+        type: "INTEGER"
+      - name: "subcategory"
+        type: "VARCHAR(100)"
+      - name: "type_code"
+        type: "VARCHAR(50)"
+      - name: "notes"
+        type: "VARCHAR(255)"
+    insert_columns:
+      - name: "keyword"
+        source: "keyword"
+      - name: "subcategory"
+        source: "subcategory"
+        nullable: true
+      - name: "type_code"
+        source: "type_code"
+        nullable: true
+      - name: "notes"
+        source: "notes"
+        nullable: true
+    foreign_key_lookup:
+      insert_column: "category_id"
+      source_column: "category_name"
+      lookup_table: "mappings.categories"
+      lookup_column: "category"
+      return_column: "id"

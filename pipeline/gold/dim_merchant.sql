@@ -1,13 +1,15 @@
 CREATE OR REPLACE TABLE gold.dim_merchant (
-    "id" VARCHAR(255) NOT NULL PRIMARY KEY,
-    "source" VARCHAR(255) NOT NULL,
-    "merchant" VARCHAR(255),
-    "is_subscription" BOOLEAN NOT NULL DEFAULT FALSE,
-    "category_id" INTEGER,
-    "parent_id" VARCHAR(255)
+    "id"              VARCHAR(255) NOT NULL PRIMARY KEY,
+    "source"          VARCHAR(255) NOT NULL,
+    "merchant"        VARCHAR(255),
+    "is_subscription" BOOLEAN      NOT NULL DEFAULT FALSE,
+    "category_id"     INTEGER,
+    "parent_id"       VARCHAR(255)
 );
 
 DELETE FROM gold.dim_merchant;
+
+-- ─── Populate merchants from each silver source ───────────────────────────────
 
 INSERT OR IGNORE INTO gold.dim_merchant (id, source, merchant)
 SELECT DISTINCT
@@ -46,11 +48,38 @@ SELECT DISTINCT
 FROM silver.wealthsimple_cash
 WHERE transaction = 'SPEND';
 
+-- ─── Apply explicit merchant-to-category overrides ────────────────────────────
 UPDATE gold.dim_merchant dm
 SET category_id = mc.category_id
 FROM mappings.merchant_to_category mc
 WHERE TRIM(dm.merchant) = TRIM(mc.merchant_name);
 
+-- ─── Apply recurring vendor rules via keyword match ───────────────────────────
+-- Matches the highest-priority (longest) keyword for each merchant and sets
+-- category_id + is_subscription=true.  This automatically categorises known
+-- recurring vendors (utilities, phone, insurance, subscriptions) without
+-- requiring individual merchant_to_category entries.
+UPDATE gold.dim_merchant dm
+SET
+    category_id      = rvr.category_id,
+    is_subscription  = TRUE
+FROM (
+    SELECT
+        dm2.id,
+        rvr2.category_id,
+        ROW_NUMBER() OVER (
+            PARTITION BY dm2.id
+            ORDER BY LENGTH(rvr2.keyword) DESC
+        ) AS rn
+    FROM gold.dim_merchant dm2
+    JOIN mappings.recurring_vendor_rules rvr2
+        ON LOWER(dm2.merchant) LIKE '%' || rvr2.keyword || '%'
+    WHERE dm2.category_id IS NULL   -- don't overwrite explicit merchant_to_category
+) rvr
+WHERE dm.id = rvr.id
+AND   rvr.rn = 1;
+
+-- ─── Apply parent merchant grouping ──────────────────────────────────────────
 UPDATE gold.dim_merchant dm
 SET parent_id = parent.id
 FROM mappings.merchant_to_parent_merchant mp
