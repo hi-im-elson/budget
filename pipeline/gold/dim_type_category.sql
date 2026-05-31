@@ -27,3 +27,7 @@ FROM (VALUES
     ('investment',       'Transfers')
 ) AS t(type_code, category_name)
 LEFT JOIN mappings.categories c ON c.category = t.category_name;
+
+-- external_transfer has no meaningful default category; must be set via merchant or etransfer_recipients overrides
+INSERT OR IGNORE INTO gold.dim_type_category (type_code, default_category_id) VALUES ('external_transfer', NULL);
+

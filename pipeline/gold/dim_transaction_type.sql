@@ -22,3 +22,5 @@ INSERT OR IGNORE INTO gold.dim_transaction_type VALUES ('refund',          'inbo
 INSERT OR IGNORE INTO gold.dim_transaction_type VALUES ('cc_payment',      'transfer', 'Credit Card Payment',   'Payment to a credit card from chequing');
 INSERT OR IGNORE INTO gold.dim_transaction_type VALUES ('account_transfer','transfer', 'Account Transfer',      'Transfer between own accounts');
 INSERT OR IGNORE INTO gold.dim_transaction_type VALUES ('investment',      'transfer', 'Investment',            'Transfer to/from investment or brokerage accounts');
+INSERT OR IGNORE INTO gold.dim_transaction_type VALUES ('external_transfer','inbound', 'External Transfer',     'Money received from an external party (not own accounts) — e-transfers, personal AFT deposits');
+

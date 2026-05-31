@@ -91,3 +91,28 @@ mappings:
       lookup_table: "mappings.categories"
       lookup_column: "category"
       return_column: "id"
+
+  income_rules:
+    table: "mappings.income_rules"
+    csv_file: "income_rules.csv"
+    columns:
+      - name: "id"
+        type: "INTEGER"
+        constraints: "NOT NULL PRIMARY KEY"
+        auto_increment: true
+      - name: "source"
+        type: "VARCHAR(100)"
+        constraints: "NOT NULL"
+      - name: "keyword"
+        type: "VARCHAR(255)"
+        constraints: "NOT NULL"
+      - name: "type_code"
+        type: "VARCHAR(50)"
+        constraints: "NOT NULL"
+    insert_columns:
+      - name: "source"
+        source: "source"
+      - name: "keyword"
+        source: "keyword"
+      - name: "type_code"
+        source: "type_code"
