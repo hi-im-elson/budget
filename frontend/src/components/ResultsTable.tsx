@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import type { QueryResult } from '../types';
 
 interface ResultsTableProps {
@@ -12,10 +12,29 @@ const PAGE_SIZE = 100;
 export function ResultsTable({ result, error }: ResultsTableProps) {
     const [page, setPage] = useState(0);
 
-    // Reset page when results change
     useEffect(() => {
         setPage(0);
     }, [result]);
+
+    // Derived early so useCallback is always called unconditionally (Rules of Hooks)
+    const columns = result?.columns ?? [];
+    const data = result?.data ?? [];
+
+    const downloadCsv = useCallback(() => {
+        const escape = (v: unknown) => {
+            const s = v === null ? '' : String(v);
+            return s.includes(',') || s.includes('"') || s.includes('\n')
+                ? `"${s.replace(/"/g, '""')}"` : s;
+        };
+        const rows = [columns.join(','), ...data.map(row => columns.map(c => escape(row[c])).join(','))];
+        const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `query-results-${Date.now()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }, [columns, data]);
 
     if (error) {
         return (
@@ -34,8 +53,6 @@ export function ResultsTable({ result, error }: ResultsTableProps) {
         );
     }
 
-    const { columns, data } = result;
-
     if (data.length === 0) {
         return (
             <div className="p-4 rounded-xl border border-slate-700/50 bg-slate-800/50 text-slate-400 text-center">
@@ -50,6 +67,16 @@ export function ResultsTable({ result, error }: ResultsTableProps) {
 
     return (
         <div className="flex flex-col border border-slate-700/50 rounded-xl bg-slate-800/50 overflow-hidden shadow-lg transform transition-all">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700/50 bg-slate-800/80">
+                <span className="text-xs text-slate-400">{data.length} row{data.length !== 1 ? 's' : ''}</span>
+                <button
+                    onClick={downloadCsv}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors border border-slate-600/50"
+                >
+                    <Download className="w-3.5 h-3.5" />
+                    Download CSV
+                </button>
+            </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead className="bg-slate-800/80 border-b border-slate-700/50 text-slate-300">
