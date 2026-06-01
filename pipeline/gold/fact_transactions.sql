@@ -151,20 +151,17 @@ WITH rbc_chq_inbound_rule AS (
     -- classification_rules match (lowest priority number).
     SELECT
         s.id                                                    AS source_id,
-        MIN(cr.type_code)  FILTER (
-            WHERE cr.id = (
-                SELECT cr2.id
-                FROM   mappings.classification_rules cr2
-                WHERE  cr2.source      = 'rbc-chequing'
-                AND    cr2.match_field = 'description'
-                AND    LOWER(s.description) LIKE '%' || cr2.keyword || '%'
-                ORDER  BY cr2.priority ASC, cr2.id ASC
-                LIMIT  1
-            )
-        )                                                       AS matched_type_code
+        cr.type_code                                            AS matched_type_code
     FROM silver.rbc_chequing s
+    JOIN mappings.classification_rules cr
+        ON  cr.source      = 'rbc-chequing'
+        AND cr.match_field = 'description'
+        AND LOWER(s.description) LIKE '%' || cr.keyword || '%'
     WHERE s.cad > 0
-    GROUP BY s.id
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY s.id
+        ORDER BY cr.priority ASC, cr.id ASC
+    ) = 1
 ),
 
 rbc_chq_classified AS (
