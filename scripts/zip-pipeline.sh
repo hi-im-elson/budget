@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Source folder to zip
-SOURCE_FOLDER="/Users/elson/repos/budget/pipeline"
+source .env
 
 # Name of the zip file (uses folder name)
 FOLDER_NAME=$(basename "$SOURCE_FOLDER")
