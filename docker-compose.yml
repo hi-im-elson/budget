@@ -62,5 +62,28 @@ services:
     ports:
       - "5432:5432"
 
+  postgres_backup:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    entrypoint: >
+      sh -c "
+        mkdir -p /backups &&
+        while true; do
+          FILENAME=/backups/budget_$$(date +%Y%m%d_%H%M%S).sql &&
+          pg_dump -h postgres -U $${POSTGRES_USER} $${POSTGRES_DB} > $$FILENAME &&
+          echo 'Backup written: '$$FILENAME &&
+          find /backups -name '*.sql' -mtime +7 -delete &&
+          echo 'Old backups pruned (>7 days)' &&
+          sleep 86400
+        done
+      "
+    volumes:
+      - ./backups:/backups
+    restart: unless-stopped
+
 volumes:
   postgres_data:

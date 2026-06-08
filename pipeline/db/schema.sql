@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS user_rules (
     category_id INTEGER NOT NULL REFERENCES categories(id),
     priority    INTEGER NOT NULL DEFAULT 100,
     created_at  TIMESTAMPTZ DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ DEFAULT NOW()
+    updated_at  TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (rule_type, match_value, source)
 );
 
 CREATE TABLE IF NOT EXISTS system_rules (
@@ -26,7 +27,8 @@ CREATE TABLE IF NOT EXISTS system_rules (
     type_code   VARCHAR,
     category_id INTEGER REFERENCES categories(id),
     priority    INTEGER NOT NULL DEFAULT 50,
-    meta        JSONB
+    meta        JSONB,
+    UNIQUE (rule_type, keyword)
 );
 
 CREATE TABLE IF NOT EXISTS llm_cache (

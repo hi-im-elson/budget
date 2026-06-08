@@ -19,3 +19,13 @@
 4. Select cash account
 5. Select monthly statements
 6. Select `Download CSV` for cash account
+
+## Restoring from backup
+
+To restore a backup into the running Postgres container:
+
+    cat backups/budget_YYYYMMDD_HHMMSS.sql | docker compose exec -T postgres psql -U budget -d budget
+
+To trigger a backup immediately without waiting 24 hours:
+
+    docker compose exec postgres_backup sh -c "pg_dump -h postgres -U \$POSTGRES_USER \$POSTGRES_DB > /backups/manual_\$(date +%Y%m%d_%H%M%S).sql"
