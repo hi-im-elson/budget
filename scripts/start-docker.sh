@@ -1,6 +1,16 @@
 #!/bin/bash
 set -e
 
+if ! docker info > /dev/null 2>&1; then
+  echo "Docker Desktop not running. Starting..."
+  open -a Docker
+  echo "Waiting for Docker to be ready..."
+  until docker info > /dev/null 2>&1; do
+    sleep 2
+  done
+  echo "Docker is ready."
+fi
+
 echo "Shutting down existing containers and removing orphans..."
 docker-compose down -v --remove-orphans
 

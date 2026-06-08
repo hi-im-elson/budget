@@ -1,6 +1,9 @@
 services:
   duckdb-processor:
     build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./data:/app/data
       - ./pipeline:/app/pipeline
@@ -8,13 +11,18 @@ services:
       - ./resources:/app/resources
     environment:
       - DUCKDB_DATABASE=/app/data/budget.db
+      - POSTGRES_DSN=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - TZ=America/Toronto
     command:
       - /bin/bash
       - -c
       - "/app/scripts/entrypoint.sh && tail -f /dev/null"
+
   api:
     build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - ./data:/app/data
       - ./api:/app/api
@@ -22,10 +30,12 @@ services:
       - ./resources:/app/resources
     environment:
       - DUCKDB_DATABASE=/app/data/budget.db
+      - POSTGRES_DSN=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - TZ=America/Toronto
     ports:
       - "8000:8000"
-    command: [ "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000" ]
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
   frontend:
     build: ./frontend
     ports:
@@ -34,3 +44,23 @@ services:
       - CHOKIDAR_USEPOLLING=true
     depends_on:
       - api
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
