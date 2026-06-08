@@ -2,6 +2,7 @@ mappings:
   categories:
     table: "mappings.categories"
     csv_file: "categories.csv"
+    unique_key: ["category"]
     columns:
       - name: "id"
         type: "INTEGER"
@@ -22,6 +23,7 @@ mappings:
   merchant_to_category:
     table: "mappings.merchant_to_category"
     csv_file: "merchant_to_category.csv"
+    unique_key: ["merchant_name"]
     columns:
       - name: "id"
         type: "INTEGER"
@@ -44,6 +46,7 @@ mappings:
   merchant_to_parent_merchant:
     table: "mappings.merchant_to_parent_merchant"
     csv_file: "merchant_to_parent_merchant.csv"
+    unique_key: ["merchant_name"]
     columns:
       - name: "id"
         type: "INTEGER"
@@ -62,6 +65,7 @@ mappings:
   etransfer_recipients:
     table: "mappings.etransfer_recipients"
     csv_file: "etransfer_recipients.csv"
+    unique_key: ["date", "amount", "recipient_name"]
     columns:
       - name: "id"
         type: "INTEGER"
@@ -109,6 +113,7 @@ mappings:
   classification_rules:
     table: "mappings.classification_rules"
     csv_file: "classification_rules.csv"
+    unique_key: ["source", "match_field", "keyword"]
     columns:
       - name: "id"
         type: "INTEGER"
@@ -157,6 +162,7 @@ mappings:
   etransfer_rules:
     table: "mappings.etransfer_rules"
     csv_file: "etransfer_rules.csv"
+    unique_key: ["name_pattern", "direction"]
     columns:
       - name: "id"
         type: "INTEGER"
@@ -209,6 +215,7 @@ mappings:
   recurring_vendor_rules:
     table: "mappings.recurring_vendor_rules"
     csv_file: "recurring_vendor_rules.csv"
+    unique_key: ["keyword"]
     columns:
       - name: "id"
         type: "INTEGER"
