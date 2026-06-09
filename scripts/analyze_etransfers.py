@@ -9,9 +9,6 @@ Outputs a summary of outbound/inbound e-transfers grouped by amount with
 frequency and average interval, followed by a full chronological listing.
 """
 import os
-import sys
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
 from pipeline.utils.duckdb import connect_to_db, load_config
 from pipeline.utils.logger import create_logger

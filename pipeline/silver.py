@@ -1,9 +1,5 @@
 import duckdb
 import os
-import sys
-
-# Add project root to sys.path so we can import src
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
 from pipeline.utils.duckdb import (
     connect_to_db, 

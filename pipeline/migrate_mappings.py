@@ -6,11 +6,7 @@ Run from repo root: python pipeline/migrate_mappings.py
 
 import csv
 import json
-import sys
 from pathlib import Path
-
-# Allow running from repo root without installing the package
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from pipeline.utils.postgres import fetchall, get_connection
 from pipeline.utils.logger import get_logger

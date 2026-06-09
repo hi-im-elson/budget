@@ -1,7 +1,4 @@
 import os
-import sys
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
 from pipeline.utils.duckdb import connect_to_db, load_config, execute
 from pipeline.utils.logger import create_logger

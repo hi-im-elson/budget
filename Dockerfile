@@ -4,8 +4,12 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y tzdata && rm -rf /var/lib/apt/lists/*
 RUN pip install duckdb PyYAML fastapi uvicorn pydantic pytz
+
+COPY pyproject.toml .
+COPY pipeline/ ./pipeline/
+RUN pip install -e .
+
 COPY data /app/data
-COPY pipeline /app/pipeline
 COPY scripts /app/scripts
 COPY resources /app/resources
 
