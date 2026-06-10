@@ -18,7 +18,21 @@ def get_sources(config: dict) -> dict:
     return config.get("sources", {})
 
 
-def create_bronze_tables(con: duckdb.DuckDBPyConnection, config: dict):
+def create_ingestion_log(con: duckdb.DuckDBPyConnection) -> None:
+    """Creates the file-level ingestion metadata table used by bronze.py for idempotency."""
+    execute(con, """
+        CREATE TABLE IF NOT EXISTS mappings.ingestion_log (
+            file_name     VARCHAR PRIMARY KEY,
+            file_hash     VARCHAR(64)  NOT NULL,
+            last_modified TIMESTAMP    NOT NULL,
+            row_count     INTEGER      NOT NULL,
+            loaded_at     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+        );
+    """, logger)
+    logger.info("mappings.ingestion_log ready.")
+
+
+def create_bronze_tables(con: duckdb.DuckDBPyConnection, config: dict) -> None:
     sources = get_sources(config)
 
     for source_name, source_config in sources.items():
@@ -72,7 +86,7 @@ def generate_ddl(table_name: str, source_config: dict) -> str:
     return ddl
 
 
-def create_silver_tables(con: duckdb.DuckDBPyConnection, config: dict):
+def create_silver_tables(con: duckdb.DuckDBPyConnection, config: dict) -> None:
     sources = config.get("sources", {})
 
     for source_name, source_config in sources.items():
@@ -159,12 +173,7 @@ def load_mappings_csv(
                 col_names.append(fk_lookup["insert_column"])
                 values.append(result[0] if result else None)
 
-            # Build WHERE NOT EXISTS guard using the declared natural key columns.
-            # Only the key columns that are part of insert_cols are compared;
-            # fk_lookup column is intentionally excluded from the key check.
-            key_conditions = " AND ".join(
-                f"{col} = ?" for col in unique_key
-            )
+            key_conditions = " AND ".join(f"{col} = ?" for col in unique_key)
             key_values = [
                 values[col_names.index(col)]
                 for col in unique_key
@@ -186,7 +195,7 @@ def load_mappings_csv(
             )
 
 
-def create_mappings_tables(con: duckdb.DuckDBPyConnection, mappings_config: dict):
+def create_mappings_tables(con: duckdb.DuckDBPyConnection, mappings_config: dict) -> None:
     project_root = os.path.join(os.path.dirname(__file__), "..")
     mappings_dir = os.path.join(project_root, "data", "mappings")
 
@@ -228,7 +237,6 @@ def main():
     mappings_config_path = os.path.join(os.path.dirname(__file__), "../resources/mappings.yml")
     mappings_config = load_config(mappings_config_path)
 
-    # Validate Postgres connectivity before touching DuckDB — fail fast, no partial state.
     check_postgres()
 
     db_path = config.get("db", {}).get("db_path", "data/budget.db")
@@ -245,6 +253,8 @@ def main():
         create_bronze_tables(con, config)
         create_silver_tables(con, config)
         create_mappings_tables(con, mappings_config)
+        # Must run after mappings schema exists
+        create_ingestion_log(con)
         logger.info("DuckDB bootstrap complete.")
     finally:
         con.close()

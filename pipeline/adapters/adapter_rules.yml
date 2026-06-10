@@ -1,0 +1,167 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# adapter_rules.yml — Structural classification rules for all sources
+#
+# source_type drives which engine in adapters/engines/ is used:
+#   credit_card  — single-signed amounts; fully structural; no chain deferrals
+#   cash_account — bi-directional amounts; outbound fully structural;
+#                  inbound may defer to classification_rules (chain step 2)
+#
+# amount_field:   silver column that carries the signed transaction amount
+# merchant_field: silver column used for merchant matching in the chain
+# ─────────────────────────────────────────────────────────────────────────────
+
+sources:
+
+  amex-cobalt:
+    source_type: credit_card
+    amount_field: amount       # negative = charge, positive = refund/cashback
+    merchant_field: merchant   # Amex exposes a clean Merchant column
+
+    # Exact merchant string matches → type_code + direction
+    exact_matches:
+      - merchant: "PAYMENT RECEIVED - THANK YOU"
+        type_code: cc_payment
+        direction: transfer
+      - merchant: "MEMBERSHIP FEE INSTALLMENT"
+        type_code: fee
+        direction: outbound
+      - merchant: "Use Points for Purchases"
+        type_code: cashback
+        direction: inbound
+      - merchant: "Air Canada Pay with Points"
+        type_code: cashback
+        direction: inbound
+
+    # Amount-sign fallback rules (evaluated after exact_matches, in order)
+    sign_rules:
+      - condition: negative        # amount < 0
+        type_code: refund
+        direction: inbound
+      - condition: positive        # amount > 0 (default spend)
+        type_code: spending
+        direction: outbound
+
+  rbc-mastercard:
+    source_type: credit_card
+    amount_field: cad            # positive = credit/refund, negative = charge
+    merchant_field: description  # RBC uses Description 1 as the merchant proxy
+
+    exact_matches:
+      - merchant: "PAYMENT - THANK YOU / PAI EMENT - MERCI"
+        type_code: cc_payment
+        direction: transfer
+
+    sign_rules:
+      - condition: positive        # cad > 0 and not a payment
+        type_code: refund
+        direction: inbound
+      - condition: negative        # cad < 0 (default spend)
+        type_code: spending
+        direction: outbound
+
+  rbc-chequing:
+    source_type: cash_account
+    amount_field: cad            # positive = inbound, negative = outbound
+    merchant_field: description
+
+    # Outbound keyword rules (amount < 0), evaluated in priority order
+    outbound_keyword_rules:
+      - keywords: [amex, "american express", mastercard, visa]
+        type_code: cc_payment
+        direction: transfer
+      - keywords: [e-transfer]
+        type_code: e_transfer_out
+        direction: outbound
+      - keywords: [wealthsimple, wlthsimple, "ws investments"]
+        type_code: account_transfer
+        direction: transfer
+      - keywords: [transfer]           # transfer but NOT e-transfer (engine handles exclusion)
+        exclude_keywords: [e-transfer]
+        type_code: account_transfer
+        direction: transfer
+      - keywords: ["bill payment"]
+        type_code: bill_payment
+        direction: outbound
+      - fallback:
+        type_code: spending
+        direction: outbound
+
+    # Inbound keyword rules (amount > 0) — matched BEFORE deferring to chain
+    inbound_structural_rules:
+      - keywords: [wealthsimple, wlthsimple, "ws investments", investment]
+        type_code: account_transfer
+        direction: transfer
+      # No match → return None (defer to chain step 2: classification_rules)
+
+    # Chain fallbacks applied by the orchestrator after classification_rules miss
+    inbound_chain_fallbacks:
+      - keywords: [e-transfer]
+        type_code: e_transfer_in
+        direction: inbound
+      - fallback:
+        type_code: deposit
+        direction: inbound
+
+  wealthsimple-cash:
+    source_type: cash_account
+    amount_field: amount         # always signed; direction derived from transaction code
+    merchant_field: description
+    transaction_field: transaction  # Wealthsimple-specific: drives primary classification
+
+    # Transaction code → type_code + direction, fully deterministic
+    # These return immediately; no further chain lookup needed.
+    transaction_code_rules:
+      - codes: [SPEND]
+        type_code: spending
+        direction: outbound
+        defer: false
+      - codes: [OBP_OUT]
+        type_code: bill_payment
+        direction: outbound       # overridden to 'transfer' if cc keyword in description (see direction_override)
+        defer: false
+      - codes: [AFT_OUT]
+        type_code: pre_auth_debit
+        direction: outbound
+        defer: false
+      - codes: [INT]
+        type_code: interest_earned
+        direction: inbound
+        defer: false
+      - codes: [CASHBACK]
+        type_code: cashback
+        direction: inbound
+        defer: false
+      - codes: [EFT, EFTOUT, TRFOUT]
+        type_code: account_transfer
+        direction: transfer
+        defer: false
+
+      # Deferred codes — return None so chain steps 2/3 can resolve
+      # Chain fallbacks (after all rules miss) are defined in chain_fallbacks below.
+      - codes: [AFT_IN]
+        defer: true              # → classification_rules (step 2); fallback: account_transfer / transfer
+      - codes: [E_TRFOUT, P2P_SENT]
+        defer: true              # → etransfer_rules (step 3); fallback: e_transfer_out / outbound
+      - codes: [E_TRFIN]
+        defer: true              # → etransfer_rules (step 3); fallback: reimbursement / inbound
+
+    # OBP_OUT direction upgrade: if description contains a CC keyword, it's a transfer
+    direction_overrides:
+      - code: OBP_OUT
+        keywords: [mastercard, visa, amex]
+        direction: transfer
+
+    # Applied by chain orchestrator after step 2/3 misses
+    chain_fallbacks:
+      - code: AFT_IN
+        type_code: account_transfer
+        direction: transfer
+      - code: E_TRFOUT
+        type_code: e_transfer_out
+        direction: outbound
+      - code: P2P_SENT
+        type_code: e_transfer_out
+        direction: outbound
+      - code: E_TRFIN
+        type_code: reimbursement
+        direction: inbound
