@@ -1,5 +1,6 @@
 import os
 
+from pipeline.fact_transactions import build_fact_transactions
 from pipeline.utils.duckdb import connect_to_db, load_config, execute
 from pipeline.utils.logger import create_logger
 
@@ -7,13 +8,16 @@ logger = create_logger("gold.log")
 
 GOLD_DIR = os.path.join(os.path.dirname(__file__), "gold")
 
-# SQL files executed in order
-SQL_FILES = [
+# SQL files executed BEFORE fact_transactions (no dependencies on fact_transactions)
+SQL_FILES_PRE = [
     "dim_category.sql",
-    "dim_merchant.sql",
     "dim_transaction_type.sql",
     "dim_type_category.sql",
-    "fact_transactions.sql",
+]
+
+# SQL files executed AFTER fact_transactions (depend on gold.fact_transactions being populated)
+SQL_FILES_POST = [
+    "dim_merchant.sql",
     "bridge_transfer_pairs.sql",
 ]
 
@@ -122,7 +126,14 @@ def main():
             present = silver_table_exists(con, config, source)
             logger.info(f"Optional source '{source}': {'present' if present else 'absent — rows will be skipped'}")
 
-        for sql_file in SQL_FILES:
+        for sql_file in SQL_FILES_PRE:
+            logger.info(f"Loading {sql_file}...")
+            run_sql_file(con, sql_file)
+
+        logger.info("Running fact_transactions (Python)...")
+        build_fact_transactions(con)
+
+        for sql_file in SQL_FILES_POST:
             logger.info(f"Loading {sql_file}...")
             run_sql_file(con, sql_file)
 

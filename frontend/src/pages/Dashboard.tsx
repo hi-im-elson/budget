@@ -87,11 +87,11 @@ SELECT
     SUM(ft.amount) / 3.0                   AS total,
     COUNT(*)                               AS transaction_count
 FROM gold.fact_transactions ft
-LEFT JOIN gold.dim_merchant dm  ON dm.id = ft.merchant_id
+LEFT JOIN gold.dim_merchant dm ON dm.merchant_key = md5(lower(trim(ft.description)))
 LEFT JOIN gold.dim_category  dc ON dc.id = ft.category_id
 WHERE ft.direction  = 'outbound'
   AND ft.type_code NOT IN ('cc_payment', 'account_transfer', 'pre_auth_debit')
-  AND (dm.is_subscription = TRUE OR ft.type_code IN ('bill_payment'))
+  AND ft.type_code IN ('bill_payment')
   AND ft.transaction_date >= date_trunc('month', CAST('${selectedMonth}-01' AS DATE)) - INTERVAL 3 MONTH
   AND ft.transaction_date <  date_trunc('month', CAST('${selectedMonth}-01' AS DATE))
 GROUP BY 1, 2
@@ -107,11 +107,10 @@ SELECT
     SUM(ft.amount)                            AS total,
     COUNT(*)                                  AS transaction_count
 FROM gold.fact_transactions ft
-LEFT JOIN gold.dim_merchant dm  ON dm.id  = ft.merchant_id
+LEFT JOIN gold.dim_merchant dm ON dm.merchant_key = md5(lower(trim(ft.description)))
 LEFT JOIN gold.dim_category  dc ON dc.id  = ft.category_id
 WHERE ft.direction  = 'outbound'
   AND ft.type_code NOT IN ('cc_payment', 'account_transfer', 'pre_auth_debit', 'bill_payment')
-  AND COALESCE(dm.is_subscription, FALSE) = FALSE
   AND ft.transaction_date >= date_trunc('month', CAST('${selectedMonth}-01' AS DATE)) - INTERVAL 1 MONTH
   AND ft.transaction_date <  date_trunc('month', CAST('${selectedMonth}-01' AS DATE))
 GROUP BY 1, 2

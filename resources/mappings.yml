@@ -203,7 +203,6 @@ mappings:
   #   Maps recurring vendor keyword substrings to category + subcategory.
   #   Used by dim_merchant UPDATE after merchant population to tag known recurring
   #   vendors (utilities, phone, insurance, subscriptions) with the right category
-  #   and mark is_subscription=true.
   #
   #   Columns:
   #     keyword       — lowercase substring matched against merchant name

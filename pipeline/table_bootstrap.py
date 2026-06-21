@@ -7,7 +7,6 @@ from pipeline.utils.duckdb import (
     connect_to_db,
     load_config,
     execute,
-    execute_multiple,
 )
 from pipeline.utils.logger import create_logger
 

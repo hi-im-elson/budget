@@ -22,7 +22,7 @@ def _read_csv(path: Path) -> list[dict]:
     if not path.exists():
         raise FileNotFoundError(f"Expected CSV not found: {path}")
     with open(path, newline="") as f:
-        reader = csv.DictReader(f)
+        reader = csv.DictReader(f, skipinitialspace=True)
         return [{k.strip(): v.strip() for k, v in row.items()} for row in reader]
 
 

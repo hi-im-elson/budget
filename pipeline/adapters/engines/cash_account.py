@@ -31,25 +31,20 @@ def _keyword_match(desc: str, keywords: list[str], exclude: list[str] | None = N
     return False
 
 
-def _apply_keyword_rules(
+def apply_keyword_rules(
     desc: str,
     rules: list[dict],
     category_map: dict[str, int],
 ) -> ClassificationResult | None:
     for rule in rules:
-        if "fallback" in rule:
+        if "fallback" in rule or _keyword_match(desc, rule.get("keywords", []), rule.get("exclude_keywords")):
             type_code = rule["type_code"]
             return ClassificationResult(
+                type_code=type_code,
                 category_id=category_map[type_code],
                 category_name=type_code,
                 matched_by="structural",
-            )
-        if _keyword_match(desc, rule["keywords"], rule.get("exclude_keywords")):
-            type_code = rule["type_code"]
-            return ClassificationResult(
-                category_id=category_map[type_code],
-                category_name=type_code,
-                matched_by="structural",
+                direction=rule.get("direction", "outbound"),
             )
     return None
 
@@ -78,35 +73,38 @@ def classify(
             type_code = rule["type_code"]
             direction = rule["direction"]
 
-            # Apply any direction overrides (e.g. OBP_OUT + CC keyword → transfer)
             for override in config.get("direction_overrides", []):
                 if override["code"] == txn_code and any(kw in desc for kw in override["keywords"]):
                     direction = override["direction"]
                     break
 
             return ClassificationResult(
+                type_code=type_code,
                 category_id=category_map[type_code],
                 category_name=type_code,
                 matched_by="structural",
+                direction=direction,
             )
 
         # Unknown transaction code — safe fallback
         return ClassificationResult(
+            type_code="spending",
             category_id=category_map["spending"],
             category_name="spending",
             matched_by="structural",
+            direction="outbound",
         )
 
     # RBC-style: amount sign + keyword matching
     desc = str(row.raw.get(config["merchant_field"], "") or "").lower()
 
     if amount < 0:
-        return _apply_keyword_rules(desc, config.get("outbound_keyword_rules", []), category_map)
+        return apply_keyword_rules(desc, config.get("outbound_keyword_rules", []), category_map)
 
     if amount > 0:
-        result = _apply_keyword_rules(desc, config.get("inbound_structural_rules", []), category_map)
+        result = apply_keyword_rules(desc, config.get("inbound_structural_rules", []), category_map)
         if result is not None:
             return result
-        return None   # defer to chain step 2 (classification_rules)
+        return None   # defer to chain step 2
 
     return None

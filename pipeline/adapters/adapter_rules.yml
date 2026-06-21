@@ -14,7 +14,7 @@ sources:
 
   amex-cobalt:
     source_type: credit_card
-    amount_field: amount       # negative = charge, positive = refund/cashback
+    amount_field: amount       # negative = credit (payment received / refund), positive = charge (spending)
     merchant_field: merchant   # Amex exposes a clean Merchant column
 
     # Exact merchant string matches → type_code + direction
@@ -34,10 +34,10 @@ sources:
 
     # Amount-sign fallback rules (evaluated after exact_matches, in order)
     sign_rules:
-      - condition: negative        # amount < 0
+      - condition: negative        # amount < 0 → credit (refund / cashback)
         type_code: refund
         direction: inbound
-      - condition: positive        # amount > 0 (default spend)
+      - condition: positive        # amount > 0 → charge (default spend)
         type_code: spending
         direction: outbound
 

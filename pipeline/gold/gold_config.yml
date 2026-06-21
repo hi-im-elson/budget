@@ -13,31 +13,18 @@ tables:
 
   dim_merchant:
     target_table: gold.dim_merchant
-    payment_descriptions:
-      amex_cobalt:
-        - "MEMBERSHIP FEE INSTALLMENT"
-        - "PAYMENT RECEIVED - THANK YOU"
-        - "Use Points for Purchases"
-      rbc_mastercard:
-        - "PAYMENT - THANK YOU / PAI EMENT - MERCI"
-      rbc_chequing: []
-      wealthsimple_cash: []
     columns:
-      - name: "id"
+      - name: "merchant_key"
         type: "VARCHAR(255)"
         constraints: "NOT NULL PRIMARY KEY"
-      - name: "source"
+      - name: "merchant_name"
         type: "VARCHAR(255)"
-        constraints: "NOT NULL"
-      - name: "merchant"
+      - name: "default_category"
         type: "VARCHAR(255)"
-      - name: "is_subscription"
-        type: "BOOLEAN"
-        constraints: "NOT NULL DEFAULT FALSE"
-      - name: "category_id"
-        type: "INTEGER"
-      - name: "parent_id"
-        type: "VARCHAR(255)"
+      - name: "transaction_count"
+        type: "BIGINT"
+      - name: "last_seen"
+        type: "DATE"
 
   dim_source:
     target_table: gold.dim_source
@@ -79,11 +66,6 @@ tables:
       - name: "source"
         type: "VARCHAR"
         constraints: "NOT NULL"
-      - name: "merchant_id"
-        type: "VARCHAR"
-      - name: "type_code"
-        type: "VARCHAR"
-        constraints: "NOT NULL"
       - name: "description"
         type: "VARCHAR"
       - name: "amount"
@@ -92,13 +74,18 @@ tables:
       - name: "direction"
         type: "VARCHAR(20)"
         constraints: "NOT NULL"
+      - name: "type_code"
+        type: "VARCHAR"
       - name: "category_id"
         type: "INTEGER"
-      - name: "recipient_name"
+      - name: "category_name"
         type: "VARCHAR"
-      - name: "currency"
-        type: "VARCHAR(3)"
-        constraints: "DEFAULT 'CAD'"
+      - name: "matched_by"
+        type: "VARCHAR"
+        constraints: "NOT NULL"
+      - name: "confidence"
+        type: "DECIMAL(5,4)"
+        constraints: "NOT NULL DEFAULT 1.0"
       - name: "source_id"
         type: "UBIGINT"
         constraints: "NOT NULL"

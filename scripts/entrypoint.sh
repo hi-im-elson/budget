@@ -12,6 +12,9 @@ else
     echo "Running Table Bootstrap..."
     python3 pipeline/table_bootstrap.py
 
+    echo "Running Migrate Mappings..."
+    python3 pipeline/migrate_mappings.py
+
     echo "Running Bronze Layer..."
     python3 pipeline/bronze.py
 

@@ -47,18 +47,24 @@ def refresh_pipeline():
     try:
         scripts = [
             "pipeline/table_bootstrap.py",
+            "pipeline/migrate_mappings.py",
             "pipeline/bronze.py",
             "pipeline/silver.py",
             "pipeline/gold.py"
         ]
-        
+
+        env = {**os.environ, "PYTHONPATH": "/app"}
         for script in scripts:
-            # Run from /app so paths resolve correctly
-            cmd = f"python3 {script}"
-            result = subprocess.run(cmd.split(), cwd="/app", capture_output=True, text=True)
+            result = subprocess.run(
+                ["python3", script],
+                cwd="/app",
+                capture_output=True,
+                text=True,
+                env=env,
+            )
             if result.returncode != 0:
                 raise Exception(f"Script {script} failed: {result.stderr}")
-                
+
         return {"status": "success", "message": "Pipeline refreshed successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

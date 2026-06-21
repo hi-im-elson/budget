@@ -28,20 +28,22 @@ def generate_dml(source_table: str, target_table: str, source_config: dict) -> s
         source_col = col.get("source_column")
         target_type = col.get("type", "VARCHAR")
         date_format = source_config.get("csv_options", {}).get("dateformat", "")
-        target_cols.append(f'"{name}"')
 
         if name == "id":
             if primary_key:
+                target_cols.append(f'"{name}"')
                 source_cols.append(generate_primary_key_sql(primary_key))
-            else:
-                target_cols.remove(f'"{name}"')
+            # else: no primary_key → sequence default fills it; skip from INSERT
+            continue
 
-        elif col.get("default") == "CURRENT_TIMESTAMP":
+        if col.get("default") == "CURRENT_TIMESTAMP":
+            target_cols.append(f'"{name}"')
             source_cols.append(return_current_timestamp(name, target_type))
 
         elif source_col:
             fmt = date_format if target_type == "DATE" else ""
             val_expr = parse_value_from_string_sql(f'"{source_col}"', f'"{name}"', target_type, fmt)
+            target_cols.append(f'"{name}"')
             source_cols.append(val_expr)
 
     target_cols_str = ", ".join(target_cols)
